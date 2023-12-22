@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct healthGPTApp: App {
+    // Create an instance of SleepViewModel
+    @StateObject private var viewModel = SleepViewModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // Pass the viewModel to ContentView
+            ContentView(viewModel: viewModel)
         }
     }
 }
