@@ -39,31 +39,6 @@ class HealthDataManager {
     }
     
     
-//    func fetchSleepData(completion: @escaping ([HKCategorySample]) -> Void) {
-//        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
-//            print("Sleep Analysis type is not available")
-//            return
-//        }
-//        
-//        let now = Date()
-//        let startOfDay = Calendar.current.startOfDay(for: now)
-//        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
-//        
-//        let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
-//            if let error = error {
-//                print("Error fetching sleep data: \(error.localizedDescription)")
-//                completion([])
-//                return
-//            }
-//            guard let sleepSamples = samples as? [HKCategorySample] else {
-//                print("No sleep data available")
-//                completion([])
-//                return
-//            }
-//            completion(sleepSamples)
-//        }
-//        healthStore.execute(query)
-//    }
     
     func fetchSleepData(completion: @escaping ([HKCategorySample]) -> Void) {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
@@ -94,42 +69,48 @@ class HealthDataManager {
         healthStore.execute(query)
     }
 
-
-    
-    // Fetch Average Heart Rate
-    func fetchAverageHeartRate(for date: Date, completion: @escaping (Double?) -> Void) {
+    func fetchHeartRateRangeWhileAsleep(for date: Date, completion: @escaping ((min: Double, max: Double)?) -> Void) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
             print("Heart rate type not available")
             completion(nil)
             return
         }
-        
-        // Calculate the start and end times for the last 24 hours
+
         let calendar = Calendar.current
-        let twentyFourHoursAgo = calendar.date(byAdding: .hour, value: -24, to: date) ?? date
-        
-        let predicate = HKQuery.predicateForSamples(withStart: twentyFourHoursAgo, end: date, options: .strictStartDate)
-        
-        let query = HKStatisticsQuery(quantityType: heartRateType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, error in
+
+        // Adjusting sleep time: between 10 PM (previous day) to 8 AM (current day)
+        let sleepStart = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: date)!) ?? date
+        let sleepEnd = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: date) ?? date
+
+        print("Sleep Start: \(sleepStart), Sleep End: \(sleepEnd)")
+
+        let predicate = HKQuery.predicateForSamples(withStart: sleepStart, end: sleepEnd, options: .strictStartDate)
+
+        let query = HKStatisticsQuery(quantityType: heartRateType, quantitySamplePredicate: predicate, options: [.discreteMin, .discreteMax]) { _, result, error in
             if let error = error {
-                print("Error in heart rate query: \(error.localizedDescription)")
+                print("Error in heart rate range query: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
-            
-            guard let result = result, let averageQuantity = result.averageQuantity() else {
+
+            guard let result = result,
+                  let minQuantity = result.minimumQuantity(),
+                  let maxQuantity = result.maximumQuantity() else {
                 print("No heart rate data available for the specified date range")
                 completion(nil)
                 return
             }
-            
-            let averageHeartRate = averageQuantity.doubleValue(for: HKUnit(from: "count/min"))
-            print("Average Heart Rate: \(averageHeartRate) bpm")
-            completion(averageHeartRate)
+
+            let minHeartRate = minQuantity.doubleValue(for: HKUnit(from: "count/min"))
+            let maxHeartRate = maxQuantity.doubleValue(for: HKUnit(from: "count/min"))
+            print("Heart Rate Range while asleep: \(minHeartRate) - \(maxHeartRate) bpm")
+            completion((min: minHeartRate, max: maxHeartRate))
         }
-        
+
         healthStore.execute(query)
     }
+
+
 
     
     

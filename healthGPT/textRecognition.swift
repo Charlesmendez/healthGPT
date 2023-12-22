@@ -17,7 +17,7 @@ final class TextRecognition {
             let text = keywords.joined(separator: ", ") // Join sleep data keywords
             print(text)
 
-            let apiKey = "YOUR API KEY HERE" // Replace with your OpenAI API key
+            let apiKey = "YOUR API KEY" // Replace with your OpenAI API key
             let openAI = OpenAISwift(authToken: apiKey)
 
             let chat: [ChatMessage] = [

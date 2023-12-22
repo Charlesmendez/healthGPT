@@ -9,12 +9,23 @@ class SleepViewModel: ObservableObject {
     @Published var unspecifiedSleep = "0"
     @Published var inBed = "0"
     
-    @Published var averageHeartRate: Double?
+//    @Published var averageHeartRate: Double?
+    @Published var minHeartRate: Double?
+    @Published var maxHeartRate: Double?
     @Published var restingHeartRate: Double?
     @Published var heartRateVariability: Double?
     @Published var respiratoryRate: Double?
     @Published var bloodOxygen: Double?
     @Published var bodyTemperature: Double?
+    
+    // Computed property to get the heart rate range as a string
+    var heartRateRangeString: String? {
+        if let minRate = minHeartRate, let maxRate = maxHeartRate {
+            return "\(String(format: "%.1f", minRate)) - \(String(format: "%.1f", maxRate))"
+        } else {
+            return nil
+        }
+    }
 
     private var healthDataManager = HealthDataManager()
 
@@ -68,9 +79,13 @@ class SleepViewModel: ObservableObject {
             keywords.append("Core Sleep: \(coreSleep)")
            
         
-            if let averageHeartRate = averageHeartRate {
-                keywords.append("Average Heart Rate: \(averageHeartRate) bpm")
+            if let minHeartRate = minHeartRate, let maxHeartRate = maxHeartRate {
+                keywords.append("Heart Rate Range: \(minHeartRate) - \(maxHeartRate) bpm")
+            } else {
+                // Handle the case where one or both values are nil
+                keywords.append("Heart Rate Range: Data not available")
             }
+
             if let restingHeartRate = restingHeartRate {
                 keywords.append("Resting Heart Rate: \(restingHeartRate) bpm")
             }
@@ -82,10 +97,7 @@ class SleepViewModel: ObservableObject {
             if let heartRateVariability = heartRateVariability {
                 keywords.append("Heart Rate Variability: \(heartRateVariability)")
             }
-            
-//            if let bodyTemperature = bodyTemperature {
-//                keywords.append("Body Temperature: \(bodyTemperature)")
-//            }
+
             if let respiratoryRate = respiratoryRate {
                 keywords.append("Respiratory Rate: \(respiratoryRate)")
             }
@@ -103,12 +115,20 @@ class SleepViewModel: ObservableObject {
 
     private func fetchAdditionalHealthData() {
             // Fetch Average Heart Rate
-            healthDataManager.fetchAverageHeartRate(for: Date()) { [weak self] rate in
-                DispatchQueue.main.async {
-                    self?.averageHeartRate = rate
-                    self?.checkAllHealthMetricsAvailable() // Check if all metrics are available
+        healthDataManager.fetchHeartRateRangeWhileAsleep(for: Date()) { [weak self] range in
+            DispatchQueue.main.async {
+                if let range = range {
+                    self?.minHeartRate = range.min
+                    self?.maxHeartRate = range.max
+                } else {
+                    // Handle the case where no data is returned
+                    self?.minHeartRate = nil
+                    self?.maxHeartRate = nil
                 }
+                self?.checkAllHealthMetricsAvailable() // Check if all metrics are available
             }
+        }
+
 
             // Fetch Resting Heart Rate
             healthDataManager.fetchRestingHeartRate(for: Date()) { [weak self] rate in
@@ -189,7 +209,8 @@ class SleepViewModel: ObservableObject {
 
     // Method to check if all health metrics are available
            private func checkAllHealthMetricsAvailable() {
-               if let _ = averageHeartRate,
+               if let _ = maxHeartRate,
+                  let _ = minHeartRate,
                   let _ = restingHeartRate,
                   let _ = heartRateVariability,
                   let _ = bodyTemperature,
@@ -266,11 +287,20 @@ class SleepViewModel: ObservableObject {
        }
     
     private func fetchAdditionalHealthData(for date: Date) {
-            healthDataManager.fetchAverageHeartRate(for: date) { [weak self] rate in
-                DispatchQueue.main.async {
-                    self?.averageHeartRate = rate
+        healthDataManager.fetchHeartRateRangeWhileAsleep(for: Date()) { [weak self] range in
+            DispatchQueue.main.async {
+                if let range = range {
+                    self?.minHeartRate = range.min
+                    self?.maxHeartRate = range.max
+                } else {
+                    // Handle the case where no data is returned
+                    self?.minHeartRate = nil
+                    self?.maxHeartRate = nil
                 }
+                self?.checkAllHealthMetricsAvailable() // Check if all metrics are available
             }
+        }
+
             healthDataManager.fetchRestingHeartRate(for: date) { [weak self] rate in
                 DispatchQueue.main.async {
                     self?.restingHeartRate = rate

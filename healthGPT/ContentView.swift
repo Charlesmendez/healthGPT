@@ -9,7 +9,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: SleepViewModel
     @State private var readinessSummary: String?
-
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -24,8 +24,7 @@ struct ContentView: View {
                         SleepDataView(title: "In Bed", value: viewModel.inBed)
                         
                         Divider()
-                        
-                        HealthMetricView(title: "Average Heart Rate", value: viewModel.averageHeartRate, unit: "bpm")
+                        HealthMetricView(title: "Heart Rate Range", stringValue: viewModel.heartRateRangeString, unit: "bpm")
                         HealthMetricView(title: "Resting Heart Rate", value: viewModel.restingHeartRate, unit: "bpm")
                         HealthMetricView(title: "Heart Variability", value: viewModel.heartRateVariability, unit: "ms")
                         HealthMetricView(title: "Oxygen in Blood", value: viewModel.bloodOxygen.map { $0 * 100 }, unit: "%")
@@ -94,7 +93,22 @@ struct SleepDataView: View {
 struct HealthMetricView: View {
     var title: String
     var value: Double?
+    var stringValue: String?
     var unit: String
+
+    init(title: String, value: Double?, unit: String) {
+        self.title = title
+        self.value = value
+        self.stringValue = nil
+        self.unit = unit
+    }
+    
+    init(title: String, stringValue: String?, unit: String) {
+        self.title = title
+        self.value = nil
+        self.stringValue = stringValue
+        self.unit = unit
+    }
 
     var body: some View {
         HStack {
@@ -104,6 +118,10 @@ struct HealthMetricView: View {
             Spacer()
             if let value = value {
                 Text(String(format: "%.1f", value) + " \(unit)")
+                    .font(.title)
+                    .foregroundColor(.green)
+            } else if let stringValue = stringValue {
+                Text(stringValue + " \(unit)")
                     .font(.title)
                     .foregroundColor(.green)
             } else {
