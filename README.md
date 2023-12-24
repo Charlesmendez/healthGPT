@@ -26,7 +26,7 @@ Readiness Score: An innovative feature inspired by Oura, assessing daily readine
 
 
 Installation:
-To use HealthGPT, clone the repository and insert your ChatGPT API Key into the TextRecognition file. 
+To use HealthGPT, clone the repository and add a Config.plist file with the name APIKey including your API Key. 
 Access to GPT-4 is a prerequisite. 
 The app is compatible with Apple Watches capable of blood oxygen measurement and requires iOS 17.1 or later.
 
