@@ -6,6 +6,8 @@
 //
 
 import HealthKit
+import EventKit
+
 
 class HealthDataManager {
     let healthStore = HKHealthStore()
@@ -37,37 +39,63 @@ class HealthDataManager {
             completion(success)
         }
     }
+
     
-    
-    
-    func fetchSleepData(completion: @escaping ([HKCategorySample]) -> Void) {
-        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else {
-            print("Sleep Analysis type is not available")
-            completion([])
-            return
-        }
-        
-        let now = Date()
-        let calendar = Calendar.current
-        let yesterday = calendar.date(byAdding: .day, value: -1, to: now) // Get data for yesterday
-        
-        let predicate = HKQuery.predicateForSamples(withStart: yesterday, end: now, options: .strictEndDate)
-        
-        let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
-            if let error = error {
-                print("Error fetching sleep data: \(error.localizedDescription)")
-                completion([])
-                return
+    func fetchSleepData() async -> [HKCategorySample]? {
+        var calendar = Calendar.current
+
+           // Get the start of the current day
+        let startOfToday = calendar.startOfDay(for: Date())
+
+           // Calculate the start date as 10 p.m. the previous day
+           guard let startDate = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: startOfToday, matchingPolicy: .previousTimePreservingSmallerComponents, repeatedTimePolicy: .first, direction: .backward) else {
+               print("Failed to calculate start date")
+               return nil
+           }
+
+           // Calculate the end date as 10 a.m. today
+           guard let endDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfToday) else {
+               print("Failed to calculate end date")
+               return nil
+           }
+
+           // Debug: Print the start and end dates
+           let dateFormatter = DateFormatter()
+           dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+           dateFormatter.timeZone = TimeZone.current
+           print("Start date: \(dateFormatter.string(from: startDate))")
+           print("End date: \(dateFormatter.string(from: endDate))")
+
+        // Create the date range predicate
+        let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+
+        // Create the asleep predicate
+        let asleepPredicate = HKCategoryValueSleepAnalysis.predicateForSamples(equalTo: HKCategoryValueSleepAnalysis.allAsleepValues)
+
+        // Combine the predicates
+        let combinedPredicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, asleepPredicate])
+
+        let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        let healthStore = HKHealthStore()
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: combinedPredicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { (query, samples, error) in
+                if let error = error {
+                    print("Error fetching sleep data: \(error)")
+                    continuation.resume(returning: nil)
+                } else if let samples = samples as? [HKCategorySample] {
+                    print("Carlos Samples: \(samples)")
+                    continuation.resume(returning: samples)
+                } else {
+                    print("No samples or casting issue")
+                    continuation.resume(returning: nil)
+                }
             }
-            guard let sleepSamples = samples as? [HKCategorySample] else {
-                print("No sleep data available")
-                completion([])
-                return
-            }
-            completion(sleepSamples)
+            
+            healthStore.execute(query)
         }
-        healthStore.execute(query)
     }
+
 
     func fetchHeartRateRangeWhileAsleep(for date: Date, completion: @escaping ((min: Double, max: Double)?) -> Void) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {

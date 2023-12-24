@@ -69,6 +69,7 @@
 		9D986B572B3395DF009366AF /* CommandModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandModel.swift; sourceTree = "<group>"; };
 		9D986B592B339612009366AF /* EmbeddingsInputModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingsInputModel.swift; sourceTree = "<group>"; };
 		9D986B5B2B339642009366AF /* ImageGenerationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationModel.swift; sourceTree = "<group>"; };
+		9DECCE9C2B37D1DE00901E58 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -119,6 +120,7 @@
 		9D986B192B336A2F009366AF /* healthGPT */ = {
 			isa = PBXGroup;
 			children = (
+				9DECCE9C2B37D1DE00901E58 /* Info.plist */,
 				9D986B442B336A81009366AF /* healthGPT.entitlements */,
 				9D986B1A2B336A2F009366AF /* healthGPTApp.swift */,
 				9D986B1C2B336A2F009366AF /* ContentView.swift */,
@@ -476,6 +478,8 @@
 				DEVELOPMENT_TEAM = 3U5XRWGSB9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = healthGPT/Info.plist;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "We need access to your calendar to retrieve sleep focus times.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Allow this app to access your health data";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -508,6 +512,8 @@
 				DEVELOPMENT_TEAM = 3U5XRWGSB9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = healthGPT/Info.plist;
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "We need access to your calendar to retrieve sleep focus times.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Allow this app to access your health data";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

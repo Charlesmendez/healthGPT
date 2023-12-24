@@ -1,5 +1,6 @@
 import Combine
 import HealthKit
+import EventKit
 
 class SleepViewModel: ObservableObject {
     @Published var totalSleep = "0"
@@ -7,9 +8,8 @@ class SleepViewModel: ObservableObject {
     @Published var remSleep = "0"
     @Published var coreSleep = "0"
     @Published var unspecifiedSleep = "0"
-    @Published var inBed = "0"
+    var awake: String = ""
     
-//    @Published var averageHeartRate: Double?
     @Published var minHeartRate: Double?
     @Published var maxHeartRate: Double?
     @Published var restingHeartRate: Double?
@@ -40,25 +40,38 @@ class SleepViewModel: ObservableObject {
 
 
 
-    func fetchSleepData() {
-        self.isLoading = true
-        healthDataManager.requestHealthDataAccess { [weak self] success in
-            if success {
-                self?.healthDataManager.fetchSleepData { sleepData in
-                    self?.processSleepData(sleepData)
-                    // Fetch additional health metrics
-                    self?.fetchAdditionalHealthData()
-                    DispatchQueue.main.async {
-                        self?.isLoading = false
-                    }
-                }
-            } else {
-                DispatchQueue.main.async {
-                    self?.isLoading = false
-                }
+    func requestHealthDataAccess() async -> Bool {
+        return await withCheckedContinuation { continuation in
+            healthDataManager.requestHealthDataAccess { success in
+                continuation.resume(returning: success)
             }
         }
     }
+
+    func fetchAndProcessSleepData() async {
+        self.isLoading = true
+
+        do {
+            // Request health data access
+            let success = await requestHealthDataAccess()
+            if success {
+                // Fetch sleep data
+                let sleepData = try await healthDataManager.fetchSleepData()
+                print("Carlos: \(sleepData)")
+                processSleepData(sleepData: sleepData)
+
+                // Fetch additional health metrics
+                await fetchAdditionalHealthData()
+            }
+        } catch {
+            print("Error occurred: \(error)")
+        }
+
+        DispatchQueue.main.async {
+            self.isLoading = false
+        }
+    }
+
     
     func fetchReadinessSummary() {
             TextRecognition().findCommonalitiesInArray(keywords: getSleepMetricsAsKeywords()) { summary in
@@ -223,68 +236,111 @@ class SleepViewModel: ObservableObject {
                }
            }
     
-    private func processSleepData(_ sleepData: [HKCategorySample]) {
-        let deepSleepIntervals = self.filterIntervals(from: sleepData, for: .asleepDeep)
-        let remSleepIntervals = self.filterIntervals(from: sleepData, for: .asleepREM)
-        let coreSleepIntervals = self.filterIntervals(from: sleepData, for: .asleepCore)
-        let unspecifiedSleepIntervals = self.filterIntervals(from: sleepData, for: .asleepUnspecified)
-        let inBedIntervals = self.filterIntervals(from: sleepData, for: .inBed)
+    func processSleepData(sleepData: [HKCategorySample]?) {
+        
+        print("Processing Sleep Data")
 
-        DispatchQueue.main.async {
-            let deepSleepDuration = self.calculateSpentTime(for: deepSleepIntervals)
-            let remSleepDuration = self.calculateSpentTime(for: remSleepIntervals)
-            let coreSleepDuration = self.calculateSpentTime(for: coreSleepIntervals)
+        // Resetting values to 0
+        var totalSleepSeconds = 0.0
+        var deepSleepSeconds = 0.0
+        var remSleepSeconds = 0.0
+        var coreSleepSeconds = 0.0
+        var unspecifiedSleepSeconds = 0.0
+//        var inBedSeconds = 0.0
+        var awakeSeconds = 0.0
 
-            self.deepSleep = self.formatDuration(deepSleepDuration)
-            self.remSleep = self.formatDuration(remSleepDuration)
-            self.coreSleep = self.formatDuration(coreSleepDuration)
-            self.unspecifiedSleep = self.formatDuration(self.calculateSpentTime(for: unspecifiedSleepIntervals))
-            self.inBed = self.formatDuration(self.calculateSpentTime(for: inBedIntervals))
-            
-            // Sum Deep, REM, and Core sleep durations for total sleep
-            let totalSleepDuration = deepSleepDuration + remSleepDuration + coreSleepDuration
-            self.totalSleep = self.formatDuration(totalSleepDuration)
-            
-            
+        guard let sleepData = sleepData else {
+            print("No sleep data provided")
+            return
         }
+
+        // Sort the sleepData by start date
+        let sortedSleepData = sleepData.sorted { $0.startDate < $1.startDate }
+
+        var firstCoreSleepTime: String?
+        var lastCoreSleepTime: String?
+
+        for (index, sample) in sortedSleepData.enumerated() {
+            var duration = sample.endDate.timeIntervalSince(sample.startDate)
+
+            // Check for duplicated data (same start and end times)
+            if index > 0 && sample.startDate == sortedSleepData[index - 1].startDate {
+                // Skip duplicated data
+                continue
+            }
+
+            // Check for overlapping time periods with the previous sample
+            if index > 0 && sample.startDate < sortedSleepData[index - 1].endDate {
+                // Calculate the overlapping duration
+                let overlapDuration = sortedSleepData[index - 1].endDate.timeIntervalSince(sample.startDate)
+
+                // Subtract the overlap from the current sample
+                duration -= overlapDuration
+            }
+
+            print("Sample: \(sample), Duration: \(duration), Value: \(sample.value)")
+
+            switch sample.value {
+            case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
+                unspecifiedSleepSeconds += duration
+            case HKCategoryValueSleepAnalysis.awake.rawValue:
+                awakeSeconds += duration
+            case HKCategoryValueSleepAnalysis.asleepCore.rawValue:
+                coreSleepSeconds += duration
+            case HKCategoryValueSleepAnalysis.asleepDeep.rawValue:
+                deepSleepSeconds += duration
+            case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
+                remSleepSeconds += duration
+            default:
+                print("Unknown sleep stage: \(sample.value)")
+            }
+
+            // Accumulate the total sleep duration including all sleep stages
+            totalSleepSeconds += duration
+            
+            if sample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "HH:mm:ss"
+                let startTime = dateFormatter.string(from: sample.startDate)
+                let endTime = dateFormatter.string(from: sample.endDate)
+                print("Core Sleep Start Time: \(startTime), End Time: \(endTime)")
+
+                if firstCoreSleepTime == nil {
+                    firstCoreSleepTime = startTime
+                }
+                lastCoreSleepTime = endTime
+            }
+
+        }
+        if let firstTime = firstCoreSleepTime, let lastTime = lastCoreSleepTime {
+            print("First Core Sleep Time: \(firstTime)")
+            print("Last Core Sleep Time: \(lastTime)")
+        }
+
+
+        // Update the properties with formatted duration
+        totalSleep = formatDuration(seconds: totalSleepSeconds)
+        deepSleep = formatDuration(seconds: deepSleepSeconds)
+        remSleep = formatDuration(seconds: remSleepSeconds)
+        coreSleep = formatDuration(seconds: coreSleepSeconds)
+        unspecifiedSleep = formatDuration(seconds: unspecifiedSleepSeconds)
+        awake = formatDuration(seconds: awakeSeconds)
+
+        print("Total Sleep: \(totalSleep) seconds")
+        print("Deep Sleep: \(deepSleep) seconds")
+        print("REM Sleep: \(remSleep) seconds")
+        print("Core Sleep: \(coreSleep) seconds")
+    }
+    
+        
+
+
+    func formatDuration(seconds: Double) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = Int(seconds) % 3600 / 60
+        return "\(hours)h \(minutes)m"
     }
 
-
-    private func filterIntervals(from sleepData: [HKCategorySample], for category: HKCategoryValueSleepAnalysis) -> [DateInterval] {
-        return sleepData.filter { $0.value == category.rawValue }
-                        .map { DateInterval(start: $0.startDate, end: $0.endDate) }
-    }
-
-    private func calculateSpentTime(for intervals: [DateInterval]) -> TimeInterval {
-           guard intervals.count > 1 else {
-               return intervals.first?.duration ?? 0
-           }
-
-           let sorted = intervals.sorted { $0.start < $1.start }
-           
-           var total: TimeInterval = 0
-           var start = sorted[0].start
-           var end = sorted[0].end
-           
-           for i in 1..<sorted.count {
-               if sorted[i].start > end {
-                   total += end.timeIntervalSince(start)
-                   start = sorted[i].start
-                   end = sorted[i].end
-               } else if sorted[i].end > end {
-                   end = sorted[i].end
-               }
-           }
-           
-           total += end.timeIntervalSince(start)
-           return total
-       }
-
-       private func formatDuration(_ duration: TimeInterval) -> String {
-           let totalHours = Int(duration / 3600)
-           let totalMinutes = Int(duration.truncatingRemainder(dividingBy: 3600) / 60)
-           return "\(totalHours) hours, \(totalMinutes) minutes"
-       }
     
     private func fetchAdditionalHealthData(for date: Date) {
         healthDataManager.fetchHeartRateRangeWhileAsleep(for: Date()) { [weak self] range in

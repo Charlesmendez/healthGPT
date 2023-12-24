@@ -21,7 +21,6 @@ struct ContentView: View {
                         SleepDataView(title: "Deep Sleep", value: viewModel.deepSleep)
                         SleepDataView(title: "REM Sleep", value: viewModel.remSleep)
                         SleepDataView(title: "Core Sleep", value: viewModel.coreSleep)
-                        SleepDataView(title: "In Bed", value: viewModel.inBed)
                         
                         Divider()
                         HealthMetricView(title: "Heart Rate Range", stringValue: viewModel.heartRateRangeString, unit: "bpm")
@@ -52,9 +51,10 @@ struct ContentView: View {
                         }
                         
                         Button("Refresh Data") {
-                            viewModel.fetchSleepData()
+                            Task {
+                                await viewModel.fetchAndProcessSleepData()
+                            }
                         }
-                        
                     }
                 }
                 .padding()
@@ -68,7 +68,9 @@ struct ContentView: View {
             })
         }
         .onAppear {
-            viewModel.fetchSleepData()
+            Task {
+                await viewModel.fetchAndProcessSleepData()
+            }
         }
     }
 }
