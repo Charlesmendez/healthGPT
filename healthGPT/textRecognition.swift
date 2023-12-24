@@ -16,8 +16,18 @@ final class TextRecognition {
         } else {
             let text = keywords.joined(separator: ", ") // Join sleep data keywords
             print(text)
-
-            let apiKey = "Your api key" // Replace with your OpenAI API key
+            
+            var apiKey: String?
+            if let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
+               let dict = NSDictionary(contentsOfFile: path) as? [String: AnyObject] {
+                apiKey = dict["APIKey"] as? String
+            }
+            
+            guard let apiKey = apiKey else {
+                print("API Key not found")
+                textHandler(nil)
+                return
+            }
             let openAI = OpenAISwift(authToken: apiKey)
 
             let chat: [ChatMessage] = [
