@@ -175,6 +175,44 @@ class HealthDataManager {
         healthStore.execute(query)
     }
     
+    func fetchAverageRestingHeartRateForLastThreeMonths(completion: @escaping (Double?) -> Void) {
+        guard let restingHeartRateType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else {
+            completion(nil)
+            return
+        }
+
+        // Calculate the start time for the last 3 months
+        let calendar = Calendar.current
+        let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+
+        let predicate = HKQuery.predicateForSamples(withStart: threeMonthsAgo, end: Date(), options: .strictStartDate)
+        
+        let query = HKSampleQuery(sampleType: restingHeartRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, error in
+            if let error = error {
+                print("Error fetching resting heart rate: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+
+            guard let heartRateSamples = samples as? [HKQuantitySample], !heartRateSamples.isEmpty else {
+                print("No resting heart rate data available for the last 3 months")
+                completion(nil)
+                return
+            }
+
+            let totalHeartRate = heartRateSamples.reduce(0) { total, sample in
+                total + sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+            }
+
+            let averageHeartRate = totalHeartRate / Double(heartRateSamples.count)
+            print("Average Resting Heart Rate for Last 3 Months: \(averageHeartRate) bpm")
+            completion(averageHeartRate)
+        }
+
+        healthStore.execute(query)
+    }
+
+    
     func fetchHeartRateVariability(for date: Date, completion: @escaping (Double?) -> Void) {
         guard let heartRateVariabilityType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
             print("Heart Rate Variability type not available")

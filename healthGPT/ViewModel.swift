@@ -14,9 +14,12 @@ class SleepViewModel: ObservableObject {
     @Published var maxHeartRate: Double?
     @Published var restingHeartRate: Double?
     @Published var heartRateVariability: Double?
+    @Published var AverageHeartRateVariability: Double?
     @Published var respiratoryRate: Double?
     @Published var bloodOxygen: Double?
     @Published var bodyTemperature: Double?
+    @Published var averageHeartRate: Double?
+
     
     // Computed property to get the heart rate range as a string
     var heartRateRangeString: String? {
@@ -105,12 +108,20 @@ class SleepViewModel: ObservableObject {
             keywords.append("Resting Heart Rate: \(restingHeartRate) bpm")
         }
         
+        if let averageHeartRate = averageHeartRate {
+            keywords.append("Average Resting Heart Rate last 3 months \(averageHeartRate)")
+        }
+        
         if let bloodOxygen = bloodOxygen {
             keywords.append("Oxygen in Blood: \(bloodOxygen)")
         }
         
         if let heartRateVariability = heartRateVariability {
             keywords.append("Heart Rate Variability: \(heartRateVariability)")
+        }
+        
+        if let AverageHeartRateVariability = AverageHeartRateVariability {
+            keywords.append("Average Heart Rate Variability: \(AverageHeartRateVariability)")
         }
         
         if let respiratoryRate = respiratoryRate {
@@ -151,6 +162,14 @@ class SleepViewModel: ObservableObject {
                 self?.restingHeartRate = rate
                 self?.checkAllHealthMetricsAvailable() // Check if all metrics are available
             }
+        }
+        
+        healthDataManager.fetchAverageRestingHeartRateForLastThreeMonths { [weak self] rate in
+            DispatchQueue.main.async {
+                self?.averageHeartRate = rate
+                self?.checkAllHealthMetricsAvailable() // Check if all metrics are available
+            }
+
         }
         
         healthDataManager.fetchHeartRateVariability(for: Date()) { [weak self] rate in
@@ -201,26 +220,41 @@ class SleepViewModel: ObservableObject {
         // Add calls to fetch other metrics
     }
     
-    // Add this new function to process HRV data
     private func processHRVData(_ hrvValues: [Double]) {
         guard !hrvValues.isEmpty else {
             stressLevel = "No Data"
             return
         }
         
-        let averageHRV = hrvValues.reduce(0, +) / Double(hrvValues.count)
-        print("Calculated Average HRV: \(averageHRV)")
-        
-        // Simple logic to determine stress level based on average HRV
-        if averageHRV < 30 {
-            stressLevel = "High Stress"
-        } else if averageHRV < 50 {
-            stressLevel = "Moderate Stress"
-        } else {
-            stressLevel = "Low Stress"
+        // Calculate the baseline HRV as the average of historical HRV values
+        let baselineHRV = hrvValues.reduce(0, +) / Double(hrvValues.count)
+        print("Calculated Baseline HRV: \(baselineHRV)")
+        DispatchQueue.main.async {
+            self.AverageHeartRateVariability = baselineHRV
         }
+        
+        // Compare current HRV with the baseline
+        if let currentHRV = heartRateVariability {
+            // Determine stress level based on whether current HRV is lower than the baseline
+            if currentHRV < baselineHRV {
+                // Further determine the level of stress based on the difference from the baseline
+                let hrvDifference = baselineHRV - currentHRV
+
+                if hrvDifference > 10 { // Example threshold, adjust as needed
+                    stressLevel = "High Stress"
+                } else {
+                    stressLevel = "Moderate Stress"
+                }
+            } else {
+                stressLevel = "Low Stress"
+            }
+        } else {
+            stressLevel = "HRV Data Unavailable"
+        }
+
         print("Updated Stress Level: \(stressLevel)")
     }
+
     
     // Method to check if all health metrics are available
     private func checkAllHealthMetricsAvailable() {
@@ -377,7 +411,6 @@ class SleepViewModel: ObservableObject {
             }
         }
         
-        // Add calls to fetch other metrics
     }
     
     

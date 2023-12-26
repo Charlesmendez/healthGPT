@@ -25,7 +25,9 @@ struct ContentView: View {
                         Divider()
                         HealthMetricView(title: "Heart Rate Range", stringValue: viewModel.heartRateRangeString, unit: "bpm")
                         HealthMetricView(title: "Resting Heart Rate", value: viewModel.restingHeartRate, unit: "bpm")
-                        HealthMetricView(title: "Heart Variability", value: viewModel.heartRateVariability, unit: "ms")
+                        HealthMetricView(title: "Average Resting Heart Rate", value: viewModel.averageHeartRate, unit: "bpm")
+                        HealthMetricView(title: "Heart Rate Variability", value: viewModel.heartRateVariability, unit: "ms")
+                        HealthMetricView(title: "Average Heart Rate Variability", value: viewModel.AverageHeartRateVariability, unit: "ms")
                         HealthMetricView(title: "Oxygen in Blood", value: viewModel.bloodOxygen.map { $0 * 100 }, unit: "%")
                         HealthMetricView(title: "Respiratory Rate", value: viewModel.respiratoryRate, unit: "brpm")
                         
