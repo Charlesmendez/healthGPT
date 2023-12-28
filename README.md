@@ -12,24 +12,37 @@ Implementation:
 HealthGPT is the result – a user-friendly app that comprehensively tracks key health metrics. It includes:
 
 Total Sleep: Monitoring the full duration of sleep.
+
 Deep Sleep: Measuring the deep, restorative phases.
+
 REM Sleep: Tracking the vital Rapid Eye Movement phase.
+
 Core Sleep: Assessing the core sleeping period.
+
 Time in Bed: Logging the total time spent in bed.
+
 Average Heart Rate: Calculating the daily average.
+
 Resting Heart Rate: Monitoring during periods of rest.
+
 Blood Oxygen: Measuring oxygen saturation levels.
+
 Respiratory Rate: Tracking breathing rate.
+
 Body Temperature Baseline: Observing regular body temperature.
+
 Stress Level: Derived from Heart Rate Variability Baseline.
+
 Readiness Score: An innovative feature inspired by Oura, assessing daily readiness based on various health metrics.
+
 
 
 Installation:
 To use HealthGPT, clone the repository and add a Config.plist file with the name APIKey including your API Key. 
 Access to GPT-4 is a prerequisite. 
 The app is compatible with Apple Watches capable of blood oxygen measurement and requires iOS 17.1 or later.
-![IMG_3213](https://github.com/Charlesmendez/healthGPT/assets/47128875/2b55cbaa-88d6-486b-9430-50b1846664bf)
+
+![Alt text](/path/to/IMG_3213.PNG)
 
 
 HealthGPT is offered under the MIT License, promoting open and adaptable use and distribution.
