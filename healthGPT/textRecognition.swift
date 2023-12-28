@@ -32,7 +32,7 @@ final class TextRecognition {
 
             let chat: [ChatMessage] = [
                 ChatMessage(role: .system, content: "You are a helpful doctor."),
-                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 180 characters. Here's the data: \"\(text)\"")
+                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 150 characters. Here's the data: \"\(text)\"")
             ]
 
             Task {
