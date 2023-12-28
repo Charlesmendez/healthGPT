@@ -42,7 +42,7 @@ To use HealthGPT, clone the repository and add a Config.plist file with the name
 Access to GPT-4 is a prerequisite. 
 The app is compatible with Apple Watches capable of blood oxygen measurement and requires iOS 17.1 or later.
 
-![Alt text](/path/to/IMG_3213.PNG)
+![Alt text](/IMG_3213.PNG)
 
 
 HealthGPT is offered under the MIT License, promoting open and adaptable use and distribution.
