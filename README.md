@@ -29,5 +29,7 @@ Installation:
 To use HealthGPT, clone the repository and add a Config.plist file with the name APIKey including your API Key. 
 Access to GPT-4 is a prerequisite. 
 The app is compatible with Apple Watches capable of blood oxygen measurement and requires iOS 17.1 or later.
+![IMG_3213](https://github.com/Charlesmendez/healthGPT/assets/47128875/2b55cbaa-88d6-486b-9430-50b1846664bf)
+
 
 HealthGPT is offered under the MIT License, promoting open and adaptable use and distribution.
