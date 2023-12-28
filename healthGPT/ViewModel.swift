@@ -132,7 +132,7 @@ class SleepViewModel: ObservableObject {
             keywords.append("Body temperature Comparisson according to baseline: \(bodyTemperatureComparison)")
         }
         
-        keywords.append("Stress Level: \(stressLevel)")
+        keywords.append("Balance disruption causes like stress, bad sleep and others based on HRV: \(stressLevel)")
         
         // Add other sleep metrics similarly
         
@@ -262,6 +262,7 @@ class SleepViewModel: ObservableObject {
            let _ = minHeartRate,
            let _ = restingHeartRate,
            let _ = heartRateVariability,
+           let _ = AverageHeartRateVariability,
            let _ = bodyTemperature,
            let _ = respiratoryRate,
            let _ = bodyTemperatureComparison,

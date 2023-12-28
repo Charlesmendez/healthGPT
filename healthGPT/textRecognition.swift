@@ -32,7 +32,7 @@ final class TextRecognition {
 
             let chat: [ChatMessage] = [
                 ChatMessage(role: .system, content: "You are a helpful doctor."),
-                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 100 characters. Here's the data: \"\(text)\"")
+                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 180 characters. Here's the data: \"\(text)\"")
             ]
 
             Task {
@@ -43,9 +43,6 @@ final class TextRecognition {
 
                         // Uppercase the first word
                         responseText = responseText
-
-                        // Remove any special characters and dots from the entire string
-                        responseText = responseText.filter { !$0.unicodeScalars.contains(where: CharacterSet.punctuationCharacters.contains) }
 
                         textHandler(responseText)
                     } else {
