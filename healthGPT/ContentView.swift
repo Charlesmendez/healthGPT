@@ -39,7 +39,7 @@ struct ContentView: View {
                         }
                         
                         
-                        Text("Stress Level: \(viewModel.stressLevel)")
+                        Text("Balance disruption Causes: \(viewModel.stressLevel)")
                             .font(.title3) // Bigger font size
                             .fontWeight(.bold) // Bold text for emphasis
                             .foregroundColor(.red) // A color that stands out, you can choose a different one

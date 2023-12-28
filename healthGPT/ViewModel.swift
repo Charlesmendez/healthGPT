@@ -241,12 +241,12 @@ class SleepViewModel: ObservableObject {
                 let hrvDifference = baselineHRV - currentHRV
 
                 if hrvDifference > 10 { // Example threshold, adjust as needed
-                    stressLevel = "High Stress"
+                    stressLevel = "High"
                 } else {
-                    stressLevel = "Moderate Stress"
+                    stressLevel = "Moderate"
                 }
             } else {
-                stressLevel = "Low Stress"
+                stressLevel = "Low"
             }
         } else {
             stressLevel = "HRV Data Unavailable"
