@@ -364,18 +364,16 @@ class HealthDataManager {
         healthStore.execute(query)
     }
 
-    
+    // fix since apple stopped sending body temp data
     func calculateBodyTemperatureBaseline(completion: @escaping (Double?) -> Void) {
         guard let wristTemperatureType = HKQuantityType.quantityType(forIdentifier: .appleSleepingWristTemperature) else {
             completion(nil)
             return
         }
 
-        let calendar = Calendar.current
+        // Adjusted predicate to include all samples up to today.
         let endDate = Date()
-        let startDate = calendar.date(byAdding: .day, value: -30, to: endDate) // 30 days ago
-
-        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictEndDate)
+        let predicate = HKQuery.predicateForSamples(withStart: nil, end: endDate, options: .strictEndDate)
 
         let query = HKStatisticsQuery(quantityType: wristTemperatureType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, error in
             if let error = error {
@@ -384,17 +382,23 @@ class HealthDataManager {
                 return
             }
 
-            guard let averageTemperature = result?.averageQuantity()?.doubleValue(for: HKUnit.degreeCelsius()) else {
-                print("No body temperature data available for the last 30 days")
+            guard let averageTemperature = result?.averageQuantity()?.doubleValue(for: HKUnit.degreeCelsius()),
+                  let startDate = result?.startDate, // These properties represent the range of all samples included.
+                  let endDate = result?.endDate else {
+                print("No body temperature data available up to today")
                 completion(nil)
                 return
             }
+
+            // Log the start and end dates of the data analyzed.
+            print("Analyzing data from start date: \(startDate) to end date: \(endDate)")
 
             completion(averageTemperature)
         }
 
         healthStore.execute(query)
     }
+
     
     func compareBodyTemperatureWithBaseline(lastNightTemperature: Double, baseline: Double) -> String {
         let temperatureDifference = lastNightTemperature - baseline
