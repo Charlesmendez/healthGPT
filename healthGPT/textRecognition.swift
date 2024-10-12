@@ -32,17 +32,18 @@ final class TextRecognition {
 
             let chat: [ChatMessage] = [
                 ChatMessage(role: .system, content: "You are a helpful doctor."),
-                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 150 characters. Here's the data: \"\(text)\"")
+                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 400 characters. Make sure to mention the things the person needs to watch for and provide a short recommendation for the day based on the peron's health. Here's the data: \"\(text)\"")
             ]
 
             Task {
                 do {
-                    let result = try await openAI.sendChatFour(with: chat, maxTokens: 50)
+                    let result = try await openAI.sendChatFour(with: chat)
                     if let completion = result.choices?.first {
                         var responseText = completion.message.content
 
                         // Uppercase the first word
                         responseText = responseText
+                        print("Carlos: \(responseText)")
 
                         textHandler(responseText)
                     } else {

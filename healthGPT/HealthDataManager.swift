@@ -448,8 +448,43 @@ class HealthDataManager {
             healthStore.execute(query)
         }
 
+    func fetchAverageRespiratoryRateForLastWeek(completion: @escaping (Double?) -> Void) {
+        guard let respiratoryRateType = HKQuantityType.quantityType(forIdentifier: .respiratoryRate) else {
+            print("Respiratory Rate type not available")
+            completion(nil)
+            return
+        }
 
+        // Calculate the start time for the last week
+        let calendar = Calendar.current
+        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date()) ?? Date()
 
+        let predicate = HKQuery.predicateForSamples(withStart: oneWeekAgo, end: Date(), options: .strictStartDate)
+
+        let query = HKSampleQuery(sampleType: respiratoryRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, error in
+            if let error = error {
+                print("Error fetching respiratory rate: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+
+            guard let respiratorySamples = samples as? [HKQuantitySample], !respiratorySamples.isEmpty else {
+                print("No respiratory rate data available for the last week")
+                completion(nil)
+                return
+            }
+
+            let totalRespiratoryRate = respiratorySamples.reduce(0) { total, sample in
+                total + sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+            }
+
+            let averageRespiratoryRate = totalRespiratoryRate / Double(respiratorySamples.count)
+            print("Average Respiratory Rate for Last Week: \(averageRespiratoryRate) breaths/min")
+            completion(averageRespiratoryRate)
+        }
+
+        healthStore.execute(query)
+    }
 
 
 }

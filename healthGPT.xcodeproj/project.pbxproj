@@ -27,6 +27,9 @@
 		9D986B5A2B339612009366AF /* EmbeddingsInputModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D986B592B339612009366AF /* EmbeddingsInputModel.swift */; };
 		9D986B5C2B339642009366AF /* ImageGenerationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D986B5B2B339642009366AF /* ImageGenerationModel.swift */; };
 		9DECCE9E2B38719100901E58 /* Config.plist in Resources */ = {isa = PBXBuildFile; fileRef = 9DECCE9D2B38719100901E58 /* Config.plist */; };
+		9DFCC15A2C98A4F5001C8927 /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DFCC1592C98A4F5001C8927 /* SupabaseManager.swift */; };
+		9DFCC15C2C98A6A7001C8927 /* ReadinessChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DFCC15B2C98A6A7001C8927 /* ReadinessChartView.swift */; };
+		9DFCC15F2C98A92A001C8927 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 9DFCC15E2C98A92A001C8927 /* Supabase */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +75,8 @@
 		9D986B5B2B339642009366AF /* ImageGenerationModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationModel.swift; sourceTree = "<group>"; };
 		9DECCE9C2B37D1DE00901E58 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9DECCE9D2B38719100901E58 /* Config.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Config.plist; sourceTree = "<group>"; };
+		9DFCC1592C98A4F5001C8927 /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		9DFCC15B2C98A6A7001C8927 /* ReadinessChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessChartView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9DFCC15F2C98A92A001C8927 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -106,6 +112,7 @@
 				9D986B2A2B336A30009366AF /* healthGPTTests */,
 				9D986B342B336A30009366AF /* healthGPTUITests */,
 				9D986B182B336A2F009366AF /* Products */,
+				9DFCC15D2C98A92A001C8927 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -141,6 +148,8 @@
 				9D986B592B339612009366AF /* EmbeddingsInputModel.swift */,
 				9D986B5B2B339642009366AF /* ImageGenerationModel.swift */,
 				9DECCE9D2B38719100901E58 /* Config.plist */,
+				9DFCC1592C98A4F5001C8927 /* SupabaseManager.swift */,
+				9DFCC15B2C98A6A7001C8927 /* ReadinessChartView.swift */,
 			);
 			path = healthGPT;
 			sourceTree = "<group>";
@@ -170,6 +179,13 @@
 			path = healthGPTUITests;
 			sourceTree = "<group>";
 		};
+		9DFCC15D2C98A92A001C8927 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -186,6 +202,9 @@
 			dependencies = (
 			);
 			name = healthGPT;
+			packageProductDependencies = (
+				9DFCC15E2C98A92A001C8927 /* Supabase */,
+			);
 			productName = healthGPT;
 			productReference = 9D986B172B336A2F009366AF /* healthGPT.app */;
 			productType = "com.apple.product-type.application";
@@ -258,6 +277,9 @@
 				Base,
 			);
 			mainGroup = 9D986B0E2B336A2F009366AF;
+			packageReferences = (
+				9DFCC1582C98A496001C8927 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			productRefGroup = 9D986B182B336A2F009366AF /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -301,6 +323,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9DFCC15A2C98A4F5001C8927 /* SupabaseManager.swift in Sources */,
 				9D986B1D2B336A2F009366AF /* ContentView.swift in Sources */,
 				9D986B522B339541009366AF /* OpenAIModel.swift in Sources */,
 				9D986B562B3395BD009366AF /* InstructionModel.swift in Sources */,
@@ -314,6 +337,7 @@
 				9D986B4A2B339422009366AF /* textRecognition.swift in Sources */,
 				9D986B502B339517009366AF /* OpenAIModelTypeModel.swift in Sources */,
 				9D986B4C2B3394B4009366AF /* OpenAISwiftModel.swift in Sources */,
+				9DFCC15C2C98A6A7001C8927 /* ReadinessChartView.swift in Sources */,
 				9D986B4E2B3394E7009366AF /* ChatMessageModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -652,6 +676,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9DFCC1582C98A496001C8927 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9DFCC15E2C98A92A001C8927 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9DFCC1582C98A496001C8927 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9D986B0F2B336A2F009366AF /* Project object */;
 }
