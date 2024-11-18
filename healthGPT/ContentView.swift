@@ -1,148 +1,139 @@
 import SwiftUI
 
 struct ContentView: View {
-    @ObservedObject var viewModel: SleepViewModel
+    @EnvironmentObject var viewModel: SleepViewModel
     @State private var readinessSummary: String?
 
+//    init(viewModel: SleepViewModel) {
+//        self.viewModel = viewModel
+//    }
+
+    // Computed property for readiness score
+    var readinessScoreDouble: Double {
+        if let score = viewModel.readinessScore {
+            return Double(score) / 100.0
+        } else {
+            return 0.0
+        }
+    }
+    
+    // Computed property for load score
+    var loadScore: Double {
+        return viewModel.totalLoad
+    }
+    
+
+
+    // Computed property for sleep performance
+    var sleepPerformance: Double {
+        let totalSleepHours = viewModel.totalSleepHours
+        let deepSleepHours = viewModel.deepSleepHours
+        return SleepCalculator.calculateSleepPerformance(totalSleepHours: totalSleepHours, deepSleepHours: deepSleepHours)
+    }
+
+    // Computed property for HRV score
+    var hrvScore: Double {
+        if let currentHRV = viewModel.heartRateVariability,
+           let averageHRV = viewModel.AverageHeartRateVariability {
+            let percentage = currentHRV / averageHRV
+            // Clamp the value between 0 and 1
+            return min(max(percentage, 0.0), 1.0)
+        } else {
+            return 0.0
+        }
+    }
+
     var body: some View {
-        TabView {
-            // Sleep Analysis Tab
-            NavigationView {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        if viewModel.isLoading {
-                            ProgressView("Loading sleep data...")
-                        } else {
-                            SleepDataView(title: "Total Sleep", value: viewModel.totalSleep)
-                            SleepDataView(title: "Deep Sleep", value: viewModel.deepSleep)
-                            SleepDataView(title: "REM Sleep", value: viewModel.remSleep)
-                            SleepDataView(title: "Core Sleep", value: viewModel.coreSleep)
-
-                            Divider()
-                            HealthMetricView(title: "Heart Rate Range", stringValue: viewModel.heartRateRangeString, unit: "bpm")
-                            HealthMetricView(title: "Resting Heart Rate", value: viewModel.restingHeartRate, unit: "bpm")
-                            HealthMetricView(title: "Average Resting Heart Rate", value: viewModel.averageHeartRate, unit: "bpm")
-                            HealthMetricView(title: "Heart Rate Variability", value: viewModel.heartRateVariability, unit: "ms")
-                            HealthMetricView(title: "Average Heart Rate Variability", value: viewModel.AverageHeartRateVariability, unit: "ms")
-                            HealthMetricView(title: "Oxygen in Blood", value: viewModel.bloodOxygen.map { $0 * 100 }, unit: "%")
-                            HealthMetricView(title: "Respiratory Rate", value: viewModel.respiratoryRate, unit: "brpm")
-
-                            // New View for Average Respiratory Rate for Last Week
-                            HealthMetricView(title: "Avg Respiratory Rate Last Week", value: viewModel.averageRespiratoryRateForLastWeek, unit: "brpm")
-
-                            if let bodyTemperatureComparison = viewModel.bodyTemperatureComparison {
-                                Text("Body Temperature Baseline: \(bodyTemperatureComparison)")
-                                    .font(.headline)
-                                    .foregroundColor(bodyTemperatureComparison.contains("above") ? .red : .blue)
-                                    .padding(.vertical)
-                            }
-
-                            Text("Balance Disruption Causes: \(viewModel.stressLevel)")
-                                .font(.title3)
-                                .fontWeight(.bold)
-                                .foregroundColor(.red)
-                                .padding(.vertical)
-
-                            if let readinessSummary = viewModel.readinessSummary {
-                                Text("Readiness Summary: \(readinessSummary)")
-                                    .font(.title2)
-                                    .padding(.top)
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(nil) // Ensure no limit on the number of lines
-                                    .fixedSize(horizontal: false, vertical: true) // Allows vertical growth
-                            }
-
-                            Button("Refresh Data") {
-                                Task {
-                                    await viewModel.fetchAndProcessSleepData()
-                                }
-                            }
-                        }
-                    }
+        ScrollView {
+            VStack(spacing: 20) {
+                ZStack {
+                    // HRV - Outer ring
+                    CircularProgressView(
+                        progress: hrvScore,
+                        color: .blue,
+                        lineWidth: 12,
+                        radius: 100
+                    )
+                    
+                    // Sleep Performance
+                    CircularProgressView(
+                        progress: sleepPerformance,
+                        color: .purple,
+                        lineWidth: 12,
+                        radius: 85
+                    )
+                    
+                    // Load
+                    CircularProgressView(
+                        progress: loadScore,
+                        color: .orange,
+                        lineWidth: 12,
+                        radius: 70
+                    )
+                    
+                    // Readiness - Inner ring
+                    CircularProgressView(
+                        progress: readinessScoreDouble,
+                        color: .green,
+                        lineWidth: 12,
+                        radius: 55
+                    )
+                    
+                    // Center image
+                    Image("up")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                    
+                    // Metrics Labels
+                    MetricsLabelsView(
+                        readiness: readinessScoreDouble,
+                        sleep: sleepPerformance,
+                        hrv: hrvScore,
+                        load: loadScore
+                    )
                     .padding()
                 }
-                .navigationTitle("Sleep Analysis")
-                .navigationBarItems(trailing: Button(action: {
-                    // Settings action
-                }) {
-                    Image(systemName: "gear")
-                        .imageScale(.large)
-                })
-            }
-            .tabItem {
-                Label("Sleep", systemImage: "bed.double.fill")
-            }
+                .padding(40)
+                .frame(height: 400)
 
-            // Readiness Chart Tab
-            ReadinessChartView()
-                .tabItem {
-                    Label("Readiness", systemImage: "chart.bar")
+                // Readiness Summary Section
+                VStack(alignment: .leading, spacing: 20) {
+                    if let readinessSummary = viewModel.readinessSummary {
+                        Text("Readiness Summary:")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .padding(.top)
+                        
+                        Text(readinessSummary)
+                            .font(.body)
+                            .padding(.horizontal)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text("Loading readiness summary...")
+                            .font(.body)
+                            .foregroundColor(.gray)
+                    }
+
+                    Button("Refresh Data") {
+                        Task {
+                            await viewModel.refreshData()
+                        }
+                    }
+                    .padding(.top)
                 }
-        }
-        .onAppear {
-            Task {
-                await viewModel.fetchAndProcessSleepData()
+                .padding()
             }
+            .padding(.horizontal)
+            .padding(.vertical, 30)
         }
-    }
-}
-
-struct SleepDataView: View {
-    var title: String
-    var value: String
-
-    var body: some View {
-        HStack {
-            Text(title + ":")
-                .font(.headline)
-                .foregroundColor(.primary)
-            Spacer()
-            Text(value)
-                .font(.title)
-                .foregroundColor(.blue)
-        }
-    }
-}
-
-struct HealthMetricView: View {
-    var title: String
-    var value: Double?
-    var stringValue: String?
-    var unit: String
-
-    init(title: String, value: Double?, unit: String) {
-        self.title = title
-        self.value = value
-        self.stringValue = nil
-        self.unit = unit
-    }
-
-    init(title: String, stringValue: String?, unit: String) {
-        self.title = title
-        self.value = nil
-        self.stringValue = stringValue
-        self.unit = unit
-    }
-
-    var body: some View {
-        HStack {
-            Text(title + ":")
-                .font(.headline)
-                .foregroundColor(.primary)
-            Spacer()
-            if let value = value {
-                Text(String(format: "%.1f", value) + " \(unit)")
-                    .font(.title)
-                    .foregroundColor(.green)
-            } else if let stringValue = stringValue {
-                Text(stringValue + " \(unit)")
-                    .font(.title)
-                    .foregroundColor(.green)
-            } else {
-                Text("N/A")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-            }
-        }
+        .background(Color(.systemBackground))
+//        .onAppear {
+//            Task {
+//                await viewModel.fetchAndProcessSleepData()
+//            }
+//        }
     }
 }

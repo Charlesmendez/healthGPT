@@ -2,131 +2,155 @@ import SwiftUI
 import Charts
 
 struct ReadinessChartView: View {
-    @State private var readinessScores: [ReadinessScoreEntry] = []
-    @State private var selectedFilter: FilterType = .week
-
-    enum FilterType: String, CaseIterable, Identifiable {
-        case day = "Day"
-        case week = "Week"
-        case month = "Month"
-
-        var id: String { self.rawValue }
-    }
-
-    var calendar: Calendar {
-        var cal = Calendar.current
-        cal.timeZone = TimeZone(secondsFromGMT: 0)! // Use UTC
-        return cal
-    }
+    @EnvironmentObject var viewModel: SleepViewModel
+    private let chartHeight: CGFloat = 250
 
     var body: some View {
-        VStack {
-            Picker("Filter", selection: $selectedFilter) {
-                ForEach(FilterType.allCases) { filter in
-                    Text(filter.rawValue).tag(filter)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 30) {
+                // Existing Charts
+                ChartContainer(
+                    title: "Weekly Readiness",
+                    data: weeklyScores,
+                    height: chartHeight
+                )
+                ChartContainer(
+                    title: "Monthly Readiness",
+                    data: monthlyScores,
+                    height: chartHeight
+                )
 
-            if #available(iOS 16.0, *) {
-                if filteredScores.isEmpty {
-                    Text("No data available for the selected period.")
-                        .padding()
+                // Workout Cards
+                if !viewModel.weeklyWorkouts.isEmpty {
+                    Text("Weekly Workouts")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                        .padding(.top)
+
+                    ForEach(viewModel.weeklyWorkouts) { workout in
+                        WorkoutCard(workout: workout)
+                    }
                 } else {
-                    Chart {
-                        ForEach(filteredScores) { score in
-                            let scoreDay = calendar.startOfDay(for: score.date)
-                            BarMark(
-                                x: .value("Date", scoreDay),
-                                y: .value("Score", score.score)
-                            )
-                            .foregroundStyle(.blue)
-                            .symbol(by: .value("Date", scoreDay)) // Ensures date grouping works
-                            .annotation(position: .top) { // Optional annotation to label each bar
-                                Text("\(score.score)")
-                                    .font(.caption)
-                            }
-
-                            PointMark(
-                                x: .value("Date", scoreDay),
-                                y: .value("Score", score.score)
-                            )
-                            .foregroundStyle(.red)
-                            .symbolSize(100)
-                        }
-                    }
-                    .chartXAxis {
-                        AxisMarks(values: .stride(by: .day)) { value in
-                            AxisValueLabel(format: .dateTime.day().month())
-                        }
-                    }
-                    .chartXAxisLabel("Date")
-                    .chartYAxisLabel("Readiness Score")
-                    .chartYScale(domain: 0...100) // Ensure Y scale covers possible scores
-                    .chartXScale(domain: xAxisDomain()) // Ensure X scale covers the date range
-                    .padding()
+                    Text("No workouts available for this period.")
+                        .foregroundColor(.gray)
+                        .italic()
                 }
-            } else {
-                Text("Charts are only available on iOS 16 and above.")
             }
-        }
-        .onAppear {
-            Task {
-                await fetchReadinessScores()
-            }
+            .padding()
         }
     }
 
-    func xAxisDomain() -> ClosedRange<Date> {
-        guard let firstDate = filteredScores.first?.date,
-              let lastDate = filteredScores.last?.date else {
+    private var weeklyScores: [ReadinessScoreEntry] {
+        filterScores(byDays: 7)
+    }
+
+    private var monthlyScores: [ReadinessScoreEntry] {
+        filterScores(byDays: 30)
+    }
+
+    private func filterScores(byDays days: Int) -> [ReadinessScoreEntry] {
+        let now = calendar.startOfDay(for: Date())
+        guard let startDate = calendar.date(byAdding: .day, value: -days, to: now) else { return [] }
+        return viewModel.readinessScores.filter {
+            let scoreDay = calendar.startOfDay(for: $0.date)
+            return scoreDay >= startDate && scoreDay <= now
+        }
+        .sorted(by: { $0.date < $1.date })
+    }
+
+    private var calendar: Calendar {
+        Calendar.current
+    }
+}
+
+struct ChartContainer: View {
+    let title: String
+    let data: [ReadinessScoreEntry]
+    let height: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            
+            if data.isEmpty {
+                Text("No data available for this period.")
+                    .foregroundColor(.gray)
+                    .italic()
+                    .padding(.top, 50)
+            } else {
+                Chart {
+                    ForEach(data) { item in
+                        LineMark(
+                            x: .value("Date", calendar.startOfDay(for: item.date)),
+                            y: .value("Score", item.score)
+                        )
+                        .lineStyle(StrokeStyle(lineWidth: 4))
+                        .foregroundStyle(.white)
+
+                        PointMark(
+                            x: .value("Date", calendar.startOfDay(for: item.date)),
+                            y: .value("Score", item.score)
+                        )
+                        .symbolSize(8)
+                        .foregroundStyle(.white)
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day)) { value in
+                        AxisTick()
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(shortDateFormatter.string(from: date))
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                }
+                .chartXScale(domain: xAxisDomain(data: data))
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisTick()
+                        AxisValueLabel {
+                            if let score = value.as(Double.self) {
+                                Text("\(Int(score))")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                }
+                .chartPlotStyle { plot in
+                    plot.background(.clear)
+                }
+                .frame(height: height)
+            }
+        }
+        .padding()
+        .background(Color.black)
+        .cornerRadius(8)
+    }
+
+    private var shortDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }
+
+    private func xAxisDomain(data: [ReadinessScoreEntry]) -> ClosedRange<Date> {
+        guard let firstDate = data.first?.date,
+              let lastDate = data.last?.date else {
             return Date()...Date()
         }
         let lowerBound = calendar.startOfDay(for: firstDate)
-        let upperBound = calendar.startOfDay(for: lastDate).addingTimeInterval(24 * 60 * 60) // Add one day
+        let upperBound = calendar.startOfDay(for: lastDate).addingTimeInterval(24 * 60 * 60)
         return lowerBound...upperBound
     }
 
-    var filteredScores: [ReadinessScoreEntry] {
-        var calendar = Calendar.current
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)! // Use UTC
-        let now = Date()
-        let today = calendar.startOfDay(for: now)
-
-        switch selectedFilter {
-        case .day:
-            return readinessScores.filter {
-                let scoreDay = calendar.startOfDay(for: $0.date)
-                return scoreDay == today
-            }
-        case .week:
-            guard let weekAgo = calendar.date(byAdding: .day, value: -6, to: today) else { return [] }
-            return readinessScores.filter {
-                let scoreDay = calendar.startOfDay(for: $0.date)
-                return scoreDay >= weekAgo && scoreDay <= today
-            }
-        case .month:
-            guard let monthAgo = calendar.date(byAdding: .month, value: -1, to: today) else { return [] }
-            return readinessScores.filter {
-                let scoreDay = calendar.startOfDay(for: $0.date)
-                return scoreDay >= monthAgo && scoreDay <= today
-            }
-        }
-    }
-
-    func fetchReadinessScores() async {
-        do {
-            let scores = try await SupabaseManager.shared.fetchReadinessScores()
-            DispatchQueue.main.async {
-                self.readinessScores = scores
-                print("Fetched scores:")
-                for score in scores {
-                    print("ID: \(score.id ?? UUID()), Date: \(score.date), Score: \(score.score)")
-                }
-            }
-        } catch {
-            print("Error fetching readiness scores: \(error)")
-        }
+    private var calendar: Calendar {
+        Calendar.current
     }
 }

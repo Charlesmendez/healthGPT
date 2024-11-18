@@ -7,15 +7,35 @@
 
 import SwiftUI
 
+
 @main
 struct healthGPTApp: App {
-    // Create an instance of SleepViewModel
     @StateObject private var viewModel = SleepViewModel()
+    @State private var isLoggedIn = false // Tracks login state
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
-            // Pass the viewModel to ContentView
-            ContentView(viewModel: viewModel)
+            if isLoggedIn {
+                MainTabView(isLoggedIn: $isLoggedIn)
+                    .environmentObject(viewModel) // Inject the environment object here
+                    .onAppear {
+                        Task {
+                            await viewModel.initializeData()
+                        }
+                    }
+            } else {
+                AuthView(onLogin: {
+                    isLoggedIn = true
+                })
+            }
+        }
+        .onChange(of: scenePhase) { newPhase, _ in
+            if newPhase == .active {
+                Task {
+                    await viewModel.initializeData()
+                }
+            }
         }
     }
 }

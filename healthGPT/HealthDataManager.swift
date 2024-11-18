@@ -20,6 +20,7 @@ class HealthDataManager {
         
         // Define the types you want to read
         let typesToRead: Set<HKObjectType> = [
+            // Existing data types
             HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
             HKObjectType.quantityType(forIdentifier: .heartRate)!,
             HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
@@ -27,7 +28,11 @@ class HealthDataManager {
             HKObjectType.quantityType(forIdentifier: .oxygenSaturation)!,
             HKObjectType.quantityType(forIdentifier: .bodyTemperature)!,
             HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
-            HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature)!
+            HKObjectType.quantityType(forIdentifier: .appleSleepingWristTemperature)!,
+            
+            // **Newly added data types**
+            HKObjectType.workoutType(),
+            HKObjectType.characteristicType(forIdentifier: .dateOfBirth)!
         ]
         
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
@@ -42,7 +47,7 @@ class HealthDataManager {
 
     
     func fetchSleepData() async -> [HKCategorySample]? {
-        var calendar = Calendar.current
+        let calendar = Calendar.current
 
            // Get the start of the current day
         let startOfToday = calendar.startOfDay(for: Date())
