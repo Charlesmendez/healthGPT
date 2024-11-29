@@ -8,23 +8,22 @@
 import SwiftUI
 
 struct CircularProgressView: View {
-    let progress: Double
-    let color: Color
-    let lineWidth: CGFloat
-    let radius: CGFloat
-    
+    var progress: Double // Value between 0 and 1
+    var color: Color
+    var lineWidth: CGFloat
+    var radius: CGFloat
+
     var body: some View {
         Circle()
-            .stroke(color.opacity(0.2), lineWidth: lineWidth)
+            .stroke(color.opacity(0.2), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            .frame(width: radius * 2, height: radius * 2)
             .overlay(
                 Circle()
-                    .trim(from: 0, to: CGFloat(min(progress, 1.0)))
-                    .stroke(color, style: StrokeStyle(
-                        lineWidth: lineWidth,
-                        lineCap: .round
-                    ))
-                    .rotationEffect(.degrees(-90))
+                    .trim(from: 0.0, to: CGFloat(min(progress, 1.0)))
+                    .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .rotationEffect(Angle(degrees: -90))
+                    .animation(.linear, value: progress)
+                    .frame(width: radius * 2, height: radius * 2)
             )
-            .frame(width: radius * 2, height: radius * 2)
     }
-} 
+}

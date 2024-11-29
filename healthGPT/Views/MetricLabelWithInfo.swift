@@ -12,12 +12,15 @@ struct MetricLabelWithInfo: View {
     let value: Double
     let color: Color
     @Binding var isTooltipVisible: Bool
+    @Binding var tooltipText: String
+    let tooltipContent: String // Tooltip content specific to this label
 
     var body: some View {
         VStack(spacing: 5) {
             // Info Icon at the Top
             Button(action: {
                 withAnimation {
+                    tooltipText = tooltipContent // Update the tooltip text
                     isTooltipVisible.toggle()
                 }
             }) {
@@ -52,4 +55,3 @@ extension CGRect {
         CGPoint(x: midX, y: midY)
     }
 }
-

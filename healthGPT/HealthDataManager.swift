@@ -47,32 +47,33 @@ class HealthDataManager {
 
     
     func fetchSleepData() async -> [HKCategorySample]? {
-        let calendar = Calendar.current
+        let timeZone = TimeZone.current
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone  // Set the calendar's time zone
 
-           // Get the start of the current day
+        // Get the start of the current day in the user's time zone
         let startOfToday = calendar.startOfDay(for: Date())
 
-           // Calculate the start date as 10 p.m. the previous day
-           guard let startDate = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: startOfToday, matchingPolicy: .previousTimePreservingSmallerComponents, repeatedTimePolicy: .first, direction: .backward) else {
-               print("Failed to calculate start date")
-               return nil
-           }
+        // Calculate the start date as 6 p.m. (18:00) of the previous day
+        guard let startDate = calendar.date(byAdding: .hour, value: -6, to: startOfToday) else {
+            print("Carlos1: Failed to calculate start date")
+            return nil
+        }
 
-           // Calculate the end date as 10 a.m. today
-           guard let endDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: startOfToday) else {
-               print("Failed to calculate end date")
-               return nil
-           }
+        // Calculate the end date as 12 p.m. (12:00) of today
+        guard let endDate = calendar.date(byAdding: .hour, value: 12, to: startOfToday) else {
+            print("Carlos1: Failed to calculate end date")
+            return nil
+        }
 
-           // Debug: Print the start and end dates
-           let dateFormatter = DateFormatter()
-           dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-           dateFormatter.timeZone = TimeZone.current
-           print("Start date: \(dateFormatter.string(from: startDate))")
-           print("End date: \(dateFormatter.string(from: endDate))")
+        // Debug: Print the start and end dates with time zone information
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss ZZZZ"
+        dateFormatter.timeZone = timeZone
+        print("Carlos1: Fetching sleep data between \(dateFormatter.string(from: startDate)) and \(dateFormatter.string(from: endDate))")
 
-        // Create the date range predicate
-        let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        // Create the date range predicate without strict options
+        let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [])
 
         // Create the asleep predicate
         let asleepPredicate = HKCategoryValueSleepAnalysis.predicateForSamples(equalTo: HKCategoryValueSleepAnalysis.allAsleepValues)
@@ -84,23 +85,22 @@ class HealthDataManager {
         let healthStore = HKHealthStore()
 
         return await withCheckedContinuation { continuation in
-            let query = HKSampleQuery(sampleType: sleepType, predicate: combinedPredicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { (query, samples, error) in
+            let query = HKSampleQuery(sampleType: sleepType, predicate: combinedPredicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
                 if let error = error {
-                    print("Error fetching sleep data: \(error)")
+                    print("Carlos1: Error fetching sleep data: \(error)")
                     continuation.resume(returning: nil)
-                } else if let samples = samples as? [HKCategorySample] {
-                    print("Carlos Samples: \(samples)")
+                } else if let samples = samples as? [HKCategorySample], !samples.isEmpty {
+                    print("Carlos1: Fetched sleep samples: \(samples)")
                     continuation.resume(returning: samples)
                 } else {
-                    print("No samples or casting issue")
+                    print("Carlos1: No sleep samples found.")
                     continuation.resume(returning: nil)
                 }
             }
-            
+
             healthStore.execute(query)
         }
     }
-
 
     func fetchHeartRateRangeWhileAsleep(for date: Date, completion: @escaping ((min: Double, max: Double)?) -> Void) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {

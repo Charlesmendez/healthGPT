@@ -10,6 +10,7 @@ import SwiftUI
 struct MainTabView: View {
     @EnvironmentObject var viewModel: SleepViewModel
     @Binding var isLoggedIn: Bool
+    let onLogout: () -> Void // Callback for handling logout
 
     var body: some View {
         TabView {
@@ -44,7 +45,7 @@ struct MainTabView: View {
 
             // Profile Tab
             NavigationView {
-                ProfileView(isLoggedIn: $isLoggedIn)
+                ProfileView(isLoggedIn: $isLoggedIn, onLogout: onLogout) // Pass onLogout to ProfileView
             }
             .tabItem {
                 Image(systemName: "person.crop.circle.fill")

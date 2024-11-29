@@ -13,7 +13,8 @@ struct MetricsLabelsView: View {
     let hrv: Double
     let load: Double
 
-    @State private var isLoadTooltipVisible = false
+    @State private var isTooltipVisible = false
+    @State private var tooltipText = ""
 
     var body: some View {
         ZStack {
@@ -24,56 +25,76 @@ struct MetricsLabelsView: View {
 
                 ZStack {
                     // Readiness Label
-                    MetricLabel(
+                    MetricLabelWithInfo(
                         text: "Readiness",
                         value: readiness,
-                        color: .green
+                        color: .green,
+                        isTooltipVisible: $isTooltipVisible,
+                        tooltipText: $tooltipText,
+                        tooltipContent: """
+                        We pass all your health metrics to our AI model, which analyzes your health comprehensively and provides a Readiness score ranging from 1 to 10.
+                        """
                     )
                     .position(x: centerX, y: centerY - radius)
+                    .padding(.top, -10)
 
                     // Sleep Label
-                    MetricLabel(
+                    MetricLabelWithInfo(
                         text: "Sleep",
                         value: sleep,
-                        color: .purple
+                        color: .purple,
+                        isTooltipVisible: $isTooltipVisible,
+                        tooltipText: $tooltipText,
+                        tooltipContent: """
+                         Measures your rest quality and duration (Sleep and Deep Sleep) essential for recovery and performance.
+                        """
                     )
                     .position(x: centerX + radius, y: centerY)
 
                     // HRV Label
-                    MetricLabel(
+                    MetricLabelWithInfo(
                         text: "HRV",
                         value: hrv,
-                        color: .blue
+                        color: .blue,
+                        isTooltipVisible: $isTooltipVisible,
+                        tooltipText: $tooltipText,
+                        tooltipContent: """
+                        **HRV** (Heart Rate Variability) is an indicator of your recovery and readiness for activity. A low indicator might indicate Stress or a less resilient body.
+                        """
                     )
                     .position(x: centerX, y: centerY + radius)
+                    .padding(.top, 10)
 
-                    // Load Label with Info Icon and Tooltip
+                    // Load Label
                     MetricLabelWithInfo(
                         text: "Load",
                         value: load,
                         color: .orange,
-                        isTooltipVisible: $isLoadTooltipVisible
+                        isTooltipVisible: $isTooltipVisible,
+                        tooltipText: $tooltipText,
+                        tooltipContent: """
+                        Represents your total training effort over the past week, combining cardiovascular and muscular activities. It shows the stress your workouts place on your body, helping you gauge exercise intensity and volume. 
+                        """
                     )
                     .position(x: centerX - radius, y: centerY)
+                    
                 }
                 .frame(height: 300)
             }
-            // Overlay the Tooltip using the PreferenceKey
+            // Overlay the Tooltip
             .overlayPreferenceValue(TooltipPositionPreferenceKey.self) { position in
                 GeometryReader { proxy in
-                    if isLoadTooltipVisible, let position = position {
-                        TooltipView(text: """
-                        **Load** is a comprehensive measure of your total training effort over the past week, combining both cardiovascular and muscular activities. It reflects the cumulative stress you've placed on your body through workouts, helping you understand your exercise intensity and volume. By tracking your Load, you can ensure you're training at an optimal level—not too little and not too much—to improve fitness, enhance performance, and reduce the risk of overtraining or injury. This metric empowers you to balance your exercise and recovery periods effectively for better overall health.
-                        """)
-                        .frame(maxWidth: 250)
-                        .fixedSize()
-                        .position(x: position.x, y: position.y - 20) // Adjust y-offset as needed
-                        .onTapGesture {
-                            withAnimation {
-                                isLoadTooltipVisible = false
+                    if isTooltipVisible, let position = position {
+                        TooltipView(text: tooltipText)
+                            .frame(maxWidth: 250)
+                            .fixedSize()
+                            .position(x: position.x, y: position.y - 20) // Adjust y-offset as needed
+                            .onTapGesture {
+                                withAnimation {
+                                    isTooltipVisible = false
+                                }
                             }
-                        }
-                        .zIndex(1) // Bring the tooltip to the front
+                            .zIndex(1) // Bring the tooltip to the front
                     }
                 }
             }

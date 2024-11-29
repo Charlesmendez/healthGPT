@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @Binding var isLoggedIn: Bool
+    let onLogout: () -> Void
     @State private var userName: String = "Unknown"
     @State private var userEmail: String = "Unknown"
     @State private var isLoading: Bool = true
@@ -41,6 +42,7 @@ struct ProfileView: View {
 
             // Logout Button
             Button(action: {
+                print("Logout button tapped")
                 Task {
                     await logout()
                 }
@@ -71,36 +73,54 @@ struct ProfileView: View {
         }
     }
 
-    // Function to fetch user info from Supabase
-    func fetchUserInfo() {
-        let user = SupabaseService.shared.client.auth.currentUser
-        if let user = user {
-            userEmail = user.email ?? "No Email"
-
-            if let userMetadata = user.userMetadata as? [String: Any] {
-                userName = userMetadata["name"] as? String ?? "No Name"
-            } else {
-                userName = "No Name"
-            }
-        } else {
-            userEmail = "No Email"
-            userName = "No Name"
-        }
-        isLoading = false
-    }
-
-    // Function to logout
     func logout() async {
+        print("Logout function called")
         do {
-            try await SupabaseService.shared.client.auth.signOut()
+            let session = SupabaseManager.shared.client.auth.session
+            print("Session before logout: \(session.user.email ?? "No email")")
+
+            try await SupabaseManager.shared.client.auth.signOut()
+            print("User signed out successfully")
             DispatchQueue.main.async {
                 isLoggedIn = false
+                onLogout() // Transition to auth view
             }
         } catch {
+            print("Error signing out: \(error.localizedDescription)")
             DispatchQueue.main.async {
                 errorMessage = "Error signing out: \(error.localizedDescription)"
             }
-            print("Error signing out: \(error)")
+        }
+    }
+    // Function to fetch user info from Supabase
+    func fetchUserInfo() {
+        Task {
+            do {
+                let session = try await SupabaseManager.shared.client.auth.refreshSession()
+                let user = session.user
+                print("User ID: \(user.id)")
+                print("User Email: \(user.email ?? "No Email")")
+                
+                DispatchQueue.main.async {
+                    userEmail = user.email ?? "No Email"
+                    let userMetadata = user.userMetadata
+                    if let name = userMetadata["name"]?.value as? String {
+                        userName = name
+                    } else {
+                        userName = "No Name"
+                    }
+                    isLoading = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    errorMessage = "Error fetching user info: \(error.localizedDescription)"
+                    isLoading = false
+                }
+                print("Error fetching user info: \(error)")
+            }
         }
     }
 }
+    
+ 
+

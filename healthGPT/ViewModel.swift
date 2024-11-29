@@ -26,6 +26,10 @@ class SleepViewModel: ObservableObject {
     @Published var averageRespiratoryRateForLastWeek: Double?
     @Published var readinessScores: [ReadinessScoreEntry] = []
     @Published var weeklyWorkouts: [WorkoutEntry] = []
+    @Published var pressedReadinessScore: Bool = false
+    @Published var pendingInvites: [FriendInvite] = []
+    @Published var friends: [Friend] = []
+    @Published var friendsReadinessScores: [FriendReadinessScore] = []
     
     var heartRateRangeString: String? {
         if let minRate = minHeartRate, let maxRate = maxHeartRate {
@@ -62,8 +66,10 @@ class SleepViewModel: ObservableObject {
     
     init() {
         loadCache()
+        self.cardiovascularLoad = 0.0
+        self.muscularLoad = 0.0
+        self.totalLoad = 0.0
     }
-    
     // Load cached data
     private func loadCache() {
         if let date = UserDefaults.standard.object(forKey: cacheFetchDateKey) as? Date {
@@ -103,6 +109,7 @@ class SleepViewModel: ObservableObject {
                 let decoder = JSONDecoder()
                 let scores = try decoder.decode([ReadinessScoreEntry].self, from: data)
                 self.readinessScores = scores
+                print("Readiness scores loaded from cache: \(scores)")
                 print("Readiness scores loaded from cache. Count: \(scores.count)")
             } catch {
                 print("Error decoding readinessScores: \(error)")
@@ -111,17 +118,21 @@ class SleepViewModel: ObservableObject {
     }
     
     // Initialize data fetching
+    @MainActor
     func initializeData() async {
+        print("Carlos1: initializeData() called")
         if await isNewDataAvailable() {
-            print("New data available. Fetching and processing sleep and workout data...")
-            await fetchAndProcessSleepData()
-            await fetchWeeklyWorkouts()
+            isLoading = true
+            print("Carlos2: New data is available. Fetching data.")
+            await refreshData()
         } else {
-            print("No new HealthKit data available. Using cached data.")
-            loadReadinessScoresFromCache()
+            print("Carlos1: No new data available. Loading cache.")
+//            loadReadinessScoresFromCache()
+            loadCache()
         }
         // Always fetch readiness scores
         await fetchReadinessScores()
+        print("Carlos2: initializeData() completed")
     }
     
     // Determine whether to fetch new data by checking new sleep and workout data since lastFetchDate
@@ -130,24 +141,29 @@ class SleepViewModel: ObservableObject {
             print("No previous fetch date found. New data is available.")
             return true // No data fetched yet
         }
-        
+
         let now = Date()
-        
+        let adjustedLastFetch = lastFetch // Use the exact last fetch date
+
+        print("Checking for new data from \(adjustedLastFetch) to \(now)")
+
         // Define sample types
         guard let sleepType = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             print("Sleep Analysis Type is unavailable.")
             return false
         }
-        let workoutType = HKObjectType.workoutType() // Non-optional, no guard let needed
-        
-        // Define predicates
-        let sleepPredicate = HKQuery.predicateForSamples(withStart: lastFetch, end: now, options: .strictStartDate)
-        let workoutPredicate = HKQuery.predicateForSamples(withStart: lastFetch, end: now, options: .strictStartDate)
-        
-        // Perform serial checks for new sleep and workout data
+        let workoutType = HKObjectType.workoutType()
+
+        // Create predicates without overlapping samples
+        let sleepPredicate = HKQuery.predicateForSamples(withStart: adjustedLastFetch, end: now, options: .strictStartDate)
+        let workoutPredicate = HKQuery.predicateForSamples(withStart: adjustedLastFetch, end: now, options: .strictStartDate)
+
+        // Check for new data
         let sleepHasNewData = await hasNewData(sampleType: sleepType, predicate: sleepPredicate)
         let workoutHasNewData = await hasNewData(sampleType: workoutType, predicate: workoutPredicate)
-        
+
+        print("Carlos1: sleepHasNewData = \(sleepHasNewData), workoutHasNewData = \(workoutHasNewData)")
+
         return sleepHasNewData || workoutHasNewData
     }
     
@@ -155,20 +171,21 @@ class SleepViewModel: ObservableObject {
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(sampleType: sampleType, predicate: predicate, limit: 1, sortDescriptors: nil) { _, samples, error in
                 if let error = error {
-                    print("Error querying \(sampleType.identifier): \(error)")
+                    print("Carlos1: Error querying \(sampleType.identifier): \(error)")
                     continuation.resume(returning: false)
                     return
                 }
-                
+
                 if let samples = samples, !samples.isEmpty {
-                    print("New data found for \(sampleType.identifier)")
+                    print("Carlos1: New data found for \(sampleType.identifier)")
                     continuation.resume(returning: true)
                 } else {
-                    print("No new data found for \(sampleType.identifier)")
+                    print("Carlos1: No new data found for \(sampleType.identifier)")
                     continuation.resume(returning: false)
                 }
             }
-            
+
+            print("Carlos1: Executing query for \(sampleType.identifier) with predicate: \(predicate)")
             healthStore.execute(query)
         }
     }
@@ -177,23 +194,39 @@ class SleepViewModel: ObservableObject {
     
     
     func fetchCardiovascularLoad(completion: @escaping () -> Void) {
+        // Reset cardiovascularLoad to 0
+        DispatchQueue.main.async {
+            self.cardiovascularLoad = 0.0
+        }
+
         let group = DispatchGroup()
         let workoutType = HKObjectType.workoutType()
-        
+
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
             print("Heart Rate Type is unavailable.")
             completion()
             return
         }
-        
+
         let age = getAge(healthStore: healthStore)
-        
-        // **Limit to workouts in the last 7 days**
-        // **Limit to workouts in the last 7 days**
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Set Monday as the first day of the week
+        calendar.timeZone = TimeZone.current
         let now = Date()
-        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: now)!
-        let predicate = HKQuery.predicateForSamples(withStart: sevenDaysAgo, end: now, options: [])
-        
+
+        // Get the start of the current week
+        guard let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            print("Could not determine start of the week")
+            completion()
+            return
+        }
+
+        // Create predicate to fetch workouts from startOfWeek to now
+        let predicate = HKQuery.predicateForSamples(withStart: startOfWeek, end: now, options: [])
+
+        print("Start of week: \(startOfWeek) local time: \(startOfWeek.description(with: .current))")
+        print("Fetching workouts from \(startOfWeek) to \(now)")
+
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         let query = HKSampleQuery(
             sampleType: workoutType,
@@ -211,10 +244,16 @@ class SleepViewModel: ObservableObject {
                 completion()
                 return
             }
-            
+
             print("Fetched \(workouts.count) workouts for cardiovascular load")
-            
+
             for workout in workouts {
+                print("Workout date: \(workout.startDate) local time: \(workout.startDate.description(with: .current))")
+                // Check if workout date is before startOfWeek
+                if workout.startDate < startOfWeek {
+                    print("Skipping workout before start of week")
+                    continue
+                }
                 group.enter()
                 let heartRatePredicate = HKQuery.predicateForSamples(
                     withStart: workout.startDate,
@@ -236,18 +275,18 @@ class SleepViewModel: ObservableObject {
                         print("Error fetching heart rate samples: \(String(describing: error))")
                         return
                     }
-                    
+
                     print("Fetched \(hrSamples.count) heart rate samples for workout on \(workout.startDate)")
-                    
+
                     let mhr = 220 - age
                     var cardioLoad = 0.0
-                    
+
                     for sample in hrSamples {
                         let hr = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
                         let hrPercentage = hr / Double(mhr)
                         let duration = sample.endDate.timeIntervalSince(sample.startDate) / 60.0
                         var pointsPerMinute = 0.0
-                        
+
                         switch hrPercentage {
                         case 0.5..<0.6:
                             pointsPerMinute = 1.0
@@ -262,36 +301,55 @@ class SleepViewModel: ObservableObject {
                         default:
                             pointsPerMinute = 0.0
                         }
-                        
+
                         cardioLoad += pointsPerMinute * duration
                     }
-                    
+
                     print("Cardio load for this workout: \(cardioLoad)")
-                    
+
                     DispatchQueue.main.async {
                         self.cardiovascularLoad += cardioLoad
                     }
                 }
                 self.healthStore.execute(heartRateQuery)
             }
-            
+
             group.notify(queue: .main) {
                 print("Total cardiovascular load: \(self.cardiovascularLoad)")
                 completion()
             }
         }
-        
+
         self.healthStore.execute(query)
     }
     func fetchMuscularLoad(completion: @escaping () -> Void) {
+        // Reset muscularLoad to 0
+        DispatchQueue.main.async {
+            self.muscularLoad = 0.0
+        }
+
         let workoutType = HKObjectType.workoutType()
-        
-        // **Limit to workouts in the last 7 days**
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        calendar.timeZone = TimeZone(abbreviation: "UTC")! // Set time zone to UTC
         let now = Date()
-        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: now)!
-        let predicate = HKQuery.predicateForSamples(withStart: sevenDaysAgo, end: now, options: [])
-        
+
+        // Get the start of the current week in UTC
+        guard let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            print("Could not determine start of the week")
+            completion()
+            return
+        }
+
+        let predicate = HKQuery.predicateForSamples(withStart: startOfWeek, end: now, options: [])
+
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+
+        print("Start of week (UTC): \(startOfWeek)")
+        print("Start of week (local): \(startOfWeek.description(with: .current))")
+        print("Now (UTC): \(now)")
+        print("Now (local): \(now.description(with: .current))")
+
         let query = HKSampleQuery(
             sampleType: workoutType,
             predicate: predicate,
@@ -308,15 +366,22 @@ class SleepViewModel: ObservableObject {
                 completion()
                 return
             }
-            
+
             print("Fetched \(workouts.count) workouts for muscular load")
-            
+
             var totalMuscularLoad = 0.0
-            
+
             for workout in workouts {
+                print("Workout date (UTC): \(workout.startDate)")
+                print("Workout date (local): \(workout.startDate.description(with: .current))")
+                // Skip workouts before startOfWeek
+                if workout.startDate < startOfWeek {
+                    print("Skipping workout before start of week")
+                    continue
+                }
                 let duration = workout.duration / 60.0  // Duration in minutes
                 var pointsPerMinute = 0.0
-                
+
                 // Assign points based on workout type
                 switch workout.workoutActivityType {
                 case .traditionalStrengthTraining, .functionalStrengthTraining:
@@ -326,21 +391,21 @@ class SleepViewModel: ObservableObject {
                 default:
                     pointsPerMinute = 2.0
                 }
-                
+
                 let load = pointsPerMinute * duration
                 totalMuscularLoad += load
-                
+
                 print("Muscular load for workout on \(workout.startDate): \(load)")
             }
-            
+
             DispatchQueue.main.async {
                 self.muscularLoad = totalMuscularLoad
                 print("Total muscular load: \(self.muscularLoad)")
             }
-            
+
             completion()
         }
-        
+
         self.healthStore.execute(query)
     }
     
@@ -392,57 +457,78 @@ class SleepViewModel: ObservableObject {
     }
     
     func fetchAndProcessSleepData() async {
-        self.isLoading = true
-        print("Started fetching and processing sleep data.")
-
+        print("Carlos1: Started fetching and processing sleep data.")
+        
         let success = await requestHealthDataAccess()
+        print("Carlos1: Health data access \(success ? "granted" : "denied")")
         if success {
             let sleepData = await healthDataManager.fetchSleepData()
+            print("Carlos1: Fetched sleep data: \(String(describing: sleepData))")
             processSleepData(sleepData: sleepData)
+            print("Carlos1: Sleep data processed.")
             fetchAdditionalHealthData()
+            print("Carlos1: Additional health data fetched.")
 
-            // Fetch Load Data and wait for completion
+            // Wait for load calculations to complete
             await withCheckedContinuation { continuation in
                 let group = DispatchGroup()
 
                 group.enter()
                 fetchCardiovascularLoad {
-                    print("Completed fetchCardiovascularLoad.")
+                    print("Carlos1: Completed fetchCardiovascularLoad.")
                     group.leave()
                 }
 
                 group.enter()
                 fetchMuscularLoad {
-                    print("Completed fetchMuscularLoad.")
+                    print("Carlos1: Completed fetchMuscularLoad.")
                     group.leave()
                 }
 
                 group.notify(queue: .main) {
                     self.calculateTotalLoad()
-                    print("Completed load calculations.")
+                    print("Carlos1: Completed load calculations.")
                     continuation.resume()
                 }
             }
 
-            // After successful fetch, save to cache
+            // Move saveCache() here, after all processing is done
             saveCache()
+            print("Carlos1: Cache saved.")
         } else {
-            print("Failed to get HealthKit data access.")
+            print("Carlos1: Failed to get HealthKit data access.")
         }
 
-        self.isLoading = false
-        print("Finished fetching and processing sleep data.")
+        print("Carlos1: Finished fetching and processing sleep data.")
+        print("Carlos1: totalSleep = \(totalSleep)")
+            print("Carlos1: deepSleep = \(deepSleep)")
+            print("Carlos1: remSleep = \(remSleep)")
+            print("Carlos1: coreSleep = \(coreSleep)")
+            print("Carlos1: unspecifiedSleep = \(unspecifiedSleep)")
+            print("Carlos1: awake = \(awake)")
     }
     
+    @MainActor
     func refreshData() async {
+        isLoading = true
+        print("Setting isLoading to true")
+        do {
+            try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+        } catch {
+            print("Carlos2: Sleep was interrupted: \(error)")
+        }
+//        await fetchReadinessScores()
         await fetchAndProcessSleepData()
         await fetchWeeklyWorkouts()
+//        isLoading = false
+        print("Carlos2: Setting isLoading to false")
     }
     
     func fetchReadinessSummary() {
         TextRecognition().findCommonalitiesInArray(keywords: getSleepMetricsAsKeywords()) { summary in
             Task { @MainActor in
                 self.readinessSummary = summary
+                self.isLoading = false
                 await self.saveReadinessScore()
                 // Save summary to cache
                 UserDefaults.standard.set(summary, forKey: self.cacheReadinessSummaryKey)
@@ -456,7 +542,9 @@ class SleepViewModel: ObservableObject {
             print("Fetching readiness scores from Supabase...")
             let scores = try await SupabaseManager.shared.fetchReadinessScores()
             print("Fetched \(scores.count) readiness scores.")
-            self.readinessScores = scores
+            DispatchQueue.main.async {
+                self.readinessScores = scores
+            }
             saveReadinessScoresToCache()
         } catch {
             print("Error fetching readiness scores: \(error)")
@@ -596,6 +684,15 @@ class SleepViewModel: ObservableObject {
                 self?.checkAllHealthMetricsAvailable()
             }
         }
+        
+        // Fetch Respiratory Rate While Asleep
+        healthDataManager.fetchRespiratoryRate(for: Date()) { [weak self] rate in
+            Task { @MainActor in
+                self?.respiratoryRate = rate
+                self?.checkAllHealthMetricsAvailable()
+            }
+            
+        }
     }
     
     private func processHRVData(_ hrvValues: [Double]) {
@@ -642,6 +739,12 @@ class SleepViewModel: ObservableObject {
         if AverageHeartRateVariability == nil {
             missing.append("Average Heart Rate Variability")
         }
+        if respiratoryRate == nil {
+            missing.append("Respiratory Rate")
+        }
+        if bloodOxygen == nil {
+            missing.append("Blood Oxygen")
+        }
         if bodyTemperature == nil {
             missing.append("Body Temperature")
         }
@@ -651,15 +754,13 @@ class SleepViewModel: ObservableObject {
         if stressLevel == "Unknown" {
             missing.append("Stress Level")
         }
-        if bloodOxygen == nil {
-            missing.append("Blood Oxygen")
-        }
         
         if missing.isEmpty {
             allHealthMetricsAvailable = true
             fetchReadinessSummary()
             missingMetrics = []
         } else {
+            isLoading = false
             allHealthMetricsAvailable = false
             self.missingMetrics = missing
         }
@@ -741,11 +842,20 @@ class SleepViewModel: ObservableObject {
         let workoutType = HKObjectType.workoutType()
         
         let now = Date()
-        let fourteenDaysAgo = Calendar.current.date(byAdding: .day, value: -7, to: now)!
-        let predicate = HKQuery.predicateForSamples(withStart: fourteenDaysAgo, end: now, options: [])
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        calendar.timeZone = TimeZone.current
+        
+        guard let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) else {
+            print("Could not determine start of the week")
+            return
+        }
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startOfWeek, end: now, options: [])
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         
-        print("Fetching workouts from \(fourteenDaysAgo) to \(now)")
+        print("Fetching workouts from \(startOfWeek) to \(now)")
+        print("Start of week (local): \(startOfWeek.description(with: .current))")
         
         do {
             let workouts = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKWorkout], Error>) in
@@ -777,7 +887,7 @@ class SleepViewModel: ObservableObject {
                 let type = workout.workoutActivityType.name
                 let duration = workout.duration
                 let date = workout.startDate
-                print("Workout: Type=\(type), Duration=\(duration), Date=\(date)")
+                print("Workout: Type=\(type), Duration=\(duration), Date=\(date.description(with: .current))")
                 // Fetch max heart rate during this workout
                 let maxHR = await fetchMaxHeartRate(for: workout)
                 if let maxHR = maxHR {
@@ -823,6 +933,63 @@ class SleepViewModel: ObservableObject {
             self.healthStore.execute(query)
         }
     }
+    
+    func sendFriendInvite(email: String) async {
+            do {
+                try await SupabaseManager.shared.sendFriendInvite(email: email)
+                // Optionally notify the user of success
+            } catch {
+                print("Error sending friend invite: \(error)")
+                // Optionally handle error
+            }
+        }
+
+        func fetchPendingInvites() async {
+            do {
+                let invites = try await SupabaseManager.shared.fetchPendingInvites()
+                self.pendingInvites = invites
+            } catch {
+                print("Error fetching pending invites: \(error)")
+            }
+        }
+
+        func acceptInvite(invite: FriendInvite) async {
+            do {
+                try await SupabaseManager.shared.acceptInvite(inviteId: invite.id)
+                await fetchPendingInvites()
+                await fetchFriends()
+                await fetchFriendsReadinessScores()
+            } catch {
+                print("Error accepting invite: \(error)")
+            }
+        }
+
+        func declineInvite(invite: FriendInvite) async {
+            do {
+                try await SupabaseManager.shared.declineInvite(inviteId: invite.id)
+                await fetchPendingInvites()
+            } catch {
+                print("Error declining invite: \(error)")
+            }
+        }
+
+        func fetchFriends() async {
+            do {
+                let friends = try await SupabaseManager.shared.fetchFriends()
+                self.friends = friends
+            } catch {
+                print("Error fetching friends: \(error)")
+            }
+        }
+
+        func fetchFriendsReadinessScores() async {
+            do {
+                let scores = try await SupabaseManager.shared.fetchFriendsReadinessScores()
+                self.friendsReadinessScores = scores
+            } catch {
+                print("Error fetching friends' readiness scores: \(error)")
+            }
+        }
 }
 
 extension SleepViewModel {
@@ -874,3 +1041,18 @@ extension HKWorkoutActivityType {
         }
     }
 }
+
+extension Date {
+    func removingMilliseconds() -> Date {
+        let timeInterval = floor(self.timeIntervalSinceReferenceDate)
+        return Date(timeIntervalSinceReferenceDate: timeInterval)
+    }
+    
+    func inTimeZone(_ timeZone: TimeZone) -> Date {
+        let targetSeconds = TimeInterval(timeZone.secondsFromGMT(for: self))
+        let localSeconds = TimeInterval(TimeZone.current.secondsFromGMT(for: self))
+        return self.addingTimeInterval(targetSeconds - localSeconds)
+    }
+}
+
+
