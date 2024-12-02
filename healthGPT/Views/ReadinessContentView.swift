@@ -40,7 +40,9 @@ struct ReadinessContentView: View {
     }
     
     private func filterScoresForCurrentWeek() -> [ReadinessScoreEntry] {
-        let calendar = Calendar.current
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Set Monday as the first day of the week
+        
         guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: Date()) else {
             return []
         }

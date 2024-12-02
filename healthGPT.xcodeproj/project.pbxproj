@@ -36,6 +36,7 @@
 		9D9853372CF9FEA900F77B2A /* WorkoutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9853362CF9FEA000F77B2A /* WorkoutsView.swift */; };
 		9D9853392CFA041A00F77B2A /* ReadinessContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D9853382CFA040500F77B2A /* ReadinessContentView.swift */; };
 		9D98533B2CFA04E800F77B2A /* ChartContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D98533A2CFA04DD00F77B2A /* ChartContainer.swift */; };
+		9D98533F2CFD434000F77B2A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D98533E2CFD433600F77B2A /* AppDelegate.swift */; };
 		9D986B1B2B336A2F009366AF /* healthGPTApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D986B1A2B336A2F009366AF /* healthGPTApp.swift */; };
 		9D986B1D2B336A2F009366AF /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D986B1C2B336A2F009366AF /* ContentView.swift */; };
 		9D986B1F2B336A30009366AF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9D986B1E2B336A30009366AF /* Assets.xcassets */; };
@@ -103,6 +104,7 @@
 		9D9853362CF9FEA000F77B2A /* WorkoutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutsView.swift; sourceTree = "<group>"; };
 		9D9853382CFA040500F77B2A /* ReadinessContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessContentView.swift; sourceTree = "<group>"; };
 		9D98533A2CFA04DD00F77B2A /* ChartContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartContainer.swift; sourceTree = "<group>"; };
+		9D98533E2CFD433600F77B2A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9D986B172B336A2F009366AF /* healthGPT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = healthGPT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D986B1A2B336A2F009366AF /* healthGPTApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = healthGPTApp.swift; sourceTree = "<group>"; };
 		9D986B1C2B336A2F009366AF /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -193,6 +195,7 @@
 		9D986B192B336A2F009366AF /* healthGPT */ = {
 			isa = PBXGroup;
 			children = (
+				9D98533E2CFD433600F77B2A /* AppDelegate.swift */,
 				9DECCE9C2B37D1DE00901E58 /* Info.plist */,
 				9D986B442B336A81009366AF /* healthGPT.entitlements */,
 				9D38C6012CE983840097D717 /* MainTabView.swift */,
@@ -462,6 +465,7 @@
 				9D986B582B3395DF009366AF /* CommandModel.swift in Sources */,
 				9D38C6062CE9874F0097D717 /* FriendsView.swift in Sources */,
 				9D38C6022CE983990097D717 /* MainTabView.swift in Sources */,
+				9D98533F2CFD434000F77B2A /* AppDelegate.swift in Sources */,
 				9D98533B2CFA04E800F77B2A /* ChartContainer.swift in Sources */,
 				9DAB4C602CE6A88800E38981 /* SupabaseService.swift in Sources */,
 				9D38C5F32CE93E5A0097D717 /* CircularProgressView.swift in Sources */,

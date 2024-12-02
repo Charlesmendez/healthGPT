@@ -212,6 +212,9 @@ struct FriendsView: View {
                 }
             }
         }
+        .onChange(of: viewModel.refreshTrigger) {
+            print("Refresh trigger activated.")
+        }
     }
 
     // MARK: - Helper Functions

@@ -14,12 +14,15 @@ enum AppViewState {
     case resetPassword(url: URL)
 }
 
+
 @main
 struct healthGPTApp: App {
     @StateObject private var viewModel = SleepViewModel()
     @State private var isLoggedIn: Bool = false
     @State private var currentView: AppViewState = .auth
     @Environment(\.scenePhase) private var scenePhase
+    
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         WindowGroup {
@@ -30,6 +33,7 @@ struct healthGPTApp: App {
                 })
                 .environmentObject(viewModel)
                 .onAppear {
+                    appDelegate.viewModel = viewModel // Assign ViewModel to AppDelegate
                     Task {
                         await checkSession()
                         await viewModel.initializeData()
@@ -43,6 +47,9 @@ struct healthGPTApp: App {
                 AuthView(onLogin: {
                     self.currentView = .main
                 })
+                .onAppear {
+                    appDelegate.viewModel = viewModel // Assign ViewModel to AppDelegate
+                }
                 .onOpenURL { url in
                     handleURL(url)
                 }
@@ -51,11 +58,15 @@ struct healthGPTApp: App {
                 ResetPasswordView(url: url) {
                     self.currentView = .auth // Redirect to the login screen after password reset
                 }
+                .onAppear {
+                    appDelegate.viewModel = viewModel // Assign ViewModel to AppDelegate
+                }
             }
         }
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { oldPhase, newPhase in
             if newPhase == .active {
                 Task {
+                    await checkSession()
                     await viewModel.initializeData()
                 }
             }

@@ -154,7 +154,7 @@ class SupabaseManager {
             let sender_id: UUID
             let status: String
             let created_at: String  // Keep as String
-            let sender: SenderProfile?
+            let sender: SenderProfile? // Adjusted to match the relationship
             
             struct SenderProfile: Codable {
                 let email: String
@@ -164,7 +164,7 @@ class SupabaseManager {
         // Execute the query and specify the expected return type
         let response: PostgrestResponse<[FriendInviteResponse]> = try await client
             .from("friend_invites")
-            .select("id, sender_id, status, created_at, sender:sender_id(email)")
+            .select("id, sender_id, status, created_at, sender:profiles!fk_sender(email)") // Specify relationship
             .eq("receiver_id", value: currentUserId.uuidString)
             .eq("status", value: "pending")
             .execute()
@@ -311,10 +311,10 @@ class SupabaseManager {
             }
         }
 
-        // Execute the query
+        // Execute the query with explicit relationship
         let response: PostgrestResponse<[FriendResponse]> = try await client
             .from("friendships")
-            .select("friend_id, friend:friend_id(email)")
+            .select("friend_id, friend:profiles!fk_friend(email)") // Specify exact relationship
             .eq("user_id", value: currentUserId.uuidString)
             .execute()
 
@@ -340,6 +340,7 @@ class SupabaseManager {
         // Fetch the current user ID
         let session = try await client.auth.session
         let currentUserId = session.user.id
+        print("Current User ID: \(currentUserId)")
         
         // First delete: user_id = currentUserId AND friend_id = friendId
         let deleteResponse1 = try await client
@@ -371,9 +372,9 @@ class SupabaseManager {
             print("Friendship entry 2 revoked successfully")
         }
         
-        // Optionally, update the `friend_invites` table to mark as revoked
-        // Assuming there's a unique invite per friendship
-        let orCondition = "sender_id.eq.\(currentUserId.uuidString)&receiver_id.eq.\(friendId.uuidString),sender_id.eq.\(friendId.uuidString)&receiver_id.eq.\(currentUserId.uuidString)"
+        // Update the `friend_invites` table to mark as revoked
+        // Use properly formatted orCondition with parentheses
+        let orCondition = "(sender_id.eq.\(currentUserId.uuidString)&receiver_id.eq.\(friendId.uuidString)),(sender_id.eq.\(friendId.uuidString)&receiver_id.eq.\(currentUserId.uuidString))"
         
         let updateResponse = try await client
             .from("friend_invites")
@@ -394,7 +395,7 @@ class SupabaseManager {
             }
         }
     }
-
+    
     func fetchFriendsReadinessScores() async throws -> [FriendReadinessScore] {
         print("Fetching friends for readiness scores...")
         let friends = try await fetchFriends()
@@ -402,14 +403,14 @@ class SupabaseManager {
 
         let friendIds = friends.map { $0.id.uuidString }
         print("Friend IDs for readiness scores query: \(friendIds)")
-
+        
         guard !friendIds.isEmpty else {
             print("No friends found. Returning empty readiness scores.")
             return []
         }
-
+        
         print("Querying readiness_scores database...")
-
+        
         struct ReadinessScoreResponse: Codable {
             let id: UUID
             let date: String
@@ -417,7 +418,7 @@ class SupabaseManager {
             let load: Double?
             let user_id: UUID
         }
-
+        
         // Execute the query
         let response: PostgrestResponse<[ReadinessScoreResponse]> = try await client
             .from("readiness_scores")
@@ -426,41 +427,41 @@ class SupabaseManager {
             .order("user_id")
             .order("date", ascending: false)
             .execute()
-
+        
         let data = response.value
-
+        
         print("Data received: \(data.count) entries found")
         for item in data {
             print("Entry: \(item)")
         }
-
+        
         // Use DateFormatter instead of ISO8601DateFormatter
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)  // Adjust if necessary
         dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-
+        
         var latestScoresDict = [UUID: FriendReadinessScore]()
-
+        
         for item in data {
             // Parse the date
             guard let date = dateFormatter.date(from: item.date) else {
                 print("Failed to parse date: \(item.date)")
                 continue
             }
-
+            
             // Find the friend for this user_id
             guard let friend = friends.first(where: { $0.id == item.user_id }) else {
                 print("No matching friend found for user_id: \(item.user_id)")
                 continue
             }
-
+            
             // Handle optional load value
             guard let loadScore = item.load else {
                 print("Load value is nil for readiness score ID: \(item.id)")
                 continue
             }
-
+            
             // If we haven't added a score for this user yet, add it
             if latestScoresDict[item.user_id] == nil {
                 let readinessScore = FriendReadinessScore(
@@ -473,12 +474,38 @@ class SupabaseManager {
                 latestScoresDict[item.user_id] = readinessScore
             }
         }
-
+        
         let readinessScores = Array(latestScoresDict.values)
-
+        
         print("Processed readiness scores: \(readinessScores.count) entries")
         return readinessScores
     }
+    
+    
+    /// Deletes the user and all associated data
+    func deleteUser() async throws {
+        // Get the current user ID
+        let userID = try await getUserID()
+        
+        // 1. Delete from 'readiness_scores' table
+        try await client
+            .from("readiness_scores")
+            .delete()
+            .eq("user_id", value: userID.uuidString)
+            .execute()
+        
+        // 2. Delete from 'profiles' table
+        try await client
+            .from("profiles")
+            .delete()
+            .eq("id", value: userID.uuidString)
+            .execute()
+        
+        try await client.auth.admin.deleteUser(id: userID.uuidString)
+        
+        // Not deleting other tables because using Cascade.
+    }
+    
 }
 
 struct ReadinessScoreEntry: Codable, Identifiable {
