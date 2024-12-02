@@ -42,7 +42,6 @@ struct ProfileView: View {
 
             // Logout Button
             Button(action: {
-                print("Logout button tapped")
                 Task {
                     await logout()
                 }
@@ -74,19 +73,15 @@ struct ProfileView: View {
     }
 
     func logout() async {
-        print("Logout function called")
         do {
             let session = SupabaseManager.shared.client.auth.session
-            print("Session before logout: \(session.user.email ?? "No email")")
 
             try await SupabaseManager.shared.client.auth.signOut()
-            print("User signed out successfully")
             DispatchQueue.main.async {
                 isLoggedIn = false
                 onLogout() // Transition to auth view
             }
         } catch {
-            print("Error signing out: \(error.localizedDescription)")
             DispatchQueue.main.async {
                 errorMessage = "Error signing out: \(error.localizedDescription)"
             }
@@ -98,8 +93,7 @@ struct ProfileView: View {
             do {
                 let session = try await SupabaseManager.shared.client.auth.refreshSession()
                 let user = session.user
-                print("User ID: \(user.id)")
-                print("User Email: \(user.email ?? "No Email")")
+               
                 
                 DispatchQueue.main.async {
                     userEmail = user.email ?? "No Email"
@@ -116,7 +110,6 @@ struct ProfileView: View {
                     errorMessage = "Error fetching user info: \(error.localizedDescription)"
                     isLoading = false
                 }
-                print("Error fetching user info: \(error)")
             }
         }
     }

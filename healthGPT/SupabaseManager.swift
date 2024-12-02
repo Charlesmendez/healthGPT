@@ -333,6 +333,67 @@ class SupabaseManager {
         print("Processed friends: \(friends.count) entries")
         return friends
     }
+    
+    func revokeFriend(friendId: UUID) async throws {
+        print("Revoking friendship with Friend ID: \(friendId)")
+        
+        // Fetch the current user ID
+        let session = try await client.auth.session
+        let currentUserId = session.user.id
+        
+        // First delete: user_id = currentUserId AND friend_id = friendId
+        let deleteResponse1 = try await client
+            .from("friendships")
+            .delete()
+            .eq("user_id", value: currentUserId.uuidString)
+            .eq("friend_id", value: friendId.uuidString)
+            .execute()
+        
+        if deleteResponse1.status != 200 && deleteResponse1.status != 204 {
+            print("Error deleting friendship (1): HTTP Status \(deleteResponse1.status)")
+            throw NSError(domain: "SupabaseManager", code: deleteResponse1.status, userInfo: [NSLocalizedDescriptionKey: "Failed to revoke friendship."])
+        } else {
+            print("Friendship entry 1 revoked successfully")
+        }
+        
+        // Second delete: user_id = friendId AND friend_id = currentUserId
+        let deleteResponse2 = try await client
+            .from("friendships")
+            .delete()
+            .eq("user_id", value: friendId.uuidString)
+            .eq("friend_id", value: currentUserId.uuidString)
+            .execute()
+        
+        if deleteResponse2.status != 200 && deleteResponse2.status != 204 {
+            print("Error deleting friendship (2): HTTP Status \(deleteResponse2.status)")
+            throw NSError(domain: "SupabaseManager", code: deleteResponse2.status, userInfo: [NSLocalizedDescriptionKey: "Failed to revoke friendship."])
+        } else {
+            print("Friendship entry 2 revoked successfully")
+        }
+        
+        // Optionally, update the `friend_invites` table to mark as revoked
+        // Assuming there's a unique invite per friendship
+        let orCondition = "sender_id.eq.\(currentUserId.uuidString)&receiver_id.eq.\(friendId.uuidString),sender_id.eq.\(friendId.uuidString)&receiver_id.eq.\(currentUserId.uuidString)"
+        
+        let updateResponse = try await client
+            .from("friend_invites")
+            .update(["status": "revoked"])
+            .or(orCondition)
+            .execute()
+        
+        // Check if any rows were updated
+        if updateResponse.status != 200 && updateResponse.status != 204 {
+            print("Error updating invite status: HTTP Status \(updateResponse.status)")
+            throw NSError(domain: "SupabaseManager", code: updateResponse.status, userInfo: [NSLocalizedDescriptionKey: "Failed to update invite status."])
+        } else {
+            let updatedRows = updateResponse.count ?? 0
+            if updatedRows > 0 {
+                print("Invite status updated to revoked successfully for \(updatedRows) invite(s).")
+            } else {
+                print("No invites matched the criteria to update.")
+            }
+        }
+    }
 
     func fetchFriendsReadinessScores() async throws -> [FriendReadinessScore] {
         print("Fetching friends for readiness scores...")

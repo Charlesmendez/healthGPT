@@ -8,13 +8,11 @@
 import Foundation
 
 final class TextRecognition {
-    // ... Your existing functions ...
-
-    func findCommonalitiesInArray(keywords: [String], textHandler: @escaping (_ textClassifier: String?) -> Void) {
+    func findCommonalitiesInArray(keywords: [String]) async -> String? {
         if keywords.count == 1 {
-            textHandler(keywords.first)
+            return keywords.first
         } else {
-            let text = keywords.joined(separator: ", ") // Join sleep data keywords
+            let text = keywords.joined(separator: ", ")
             print(text)
             
             var apiKey: String?
@@ -25,37 +23,33 @@ final class TextRecognition {
             
             guard let apiKey = apiKey else {
                 print("API Key not found")
-                textHandler(nil)
-                return
+                return nil
             }
+            
             let openAI = OpenAISwift(authToken: apiKey)
-
             let chat: [ChatMessage] = [
                 ChatMessage(role: .system, content: "You are a helpful doctor."),
-                ChatMessage(role: .user, content: "Examine each data point and give me a readiness score between 0 and 100. For example 'Your readiness score is 85'. The score can be part of a summary of maximum 400 characters. Make sure to mention the things the person needs to watch for and provide a short recommendation for the day based on the peron's health. Here's the data: \"\(text)\"")
+                ChatMessage(role: .user, content: """
+                Examine each data point and give me a readiness score between 0 and 100. \
+                For example 'Your readiness score is 85'. The score can be part of a summary of maximum 400 characters. \
+                Make sure to mention the things the person needs to watch for and provide a short recommendation for the day based on the person's health. \
+                Here's the data: \"\(text)\"
+                """)
             ]
-
-            Task {
-                do {
-                    let result = try await openAI.sendChatFour(with: chat)
-                    if let completion = result.choices?.first {
-                        var responseText = completion.message.content
-
-                        // Uppercase the first word
-                        responseText = responseText
-                        print("Carlos: \(responseText)")
-
-                        textHandler(responseText)
-                    } else {
-                        textHandler(nil)
-                    }
-                } catch {
-                    textHandler(nil)
+            
+            do {
+                let result = try await openAI.sendChatFour(with: chat)
+                if let completion = result.choices?.first {
+                    var responseText = completion.message.content
+                    print("CarlosOpenAi: \(responseText)")
+                    return responseText
+                } else {
+                    return nil
                 }
+            } catch {
+                print("Carlos: Error fetching readiness summary: \(error)")
+                return nil
             }
         }
     }
-
-    // ... Your existing extensions ...
 }
-

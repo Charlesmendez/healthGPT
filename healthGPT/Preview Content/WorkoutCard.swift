@@ -26,7 +26,7 @@ struct WorkoutCard: View {
             // Divider
             Divider()
             
-            // Duration and Max Heart Rate
+            // Duration, Max Heart Rate, and Calories
             HStack {
                 // Duration
                 VStack(alignment: .leading, spacing: 4) {
@@ -37,14 +37,28 @@ struct WorkoutCard: View {
                         .font(.body)
                         .foregroundColor(.primary)
                 }
+                
                 Spacer()
-                // Max Heart Rate
+                
+                // Max Heart Rate (optional)
                 if let maxHR = workout.maxHeartRate {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Max Heart Rate")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Text("\(Int(maxHR)) bpm")
+                            .font(.body)
+                            .foregroundColor(.primary)
+                    }
+                }
+                
+                // Calories (optional)
+                if let calories = workout.calories {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Calories")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text("\(Int(calories)) kcal")
                             .font(.body)
                             .foregroundColor(.primary)
                     }

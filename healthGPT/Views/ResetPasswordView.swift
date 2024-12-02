@@ -49,7 +49,6 @@ struct ResetPasswordView: View {
 
             // Back to Sign In button
             Button(action: {
-                print("Carlos3: Navigating back to sign-in.")
                 onComplete() // Navigate back to sign-in screen
             }) {
                 Text("Back to Sign In")
@@ -83,9 +82,7 @@ struct ResetPasswordView: View {
                 do {
                     // Establish a session using the recovery URL
                     try await SupabaseManager.shared.client.auth.session(from: url)
-                    print("User authenticated with recovery token.")
                 } catch {
-                    print("Failed to authenticate user with recovery token - \(error.localizedDescription).")
                     alertMessage = "Failed to verify reset token. Please try again."
                     showAlert = true
                 }
@@ -97,7 +94,6 @@ struct ResetPasswordView: View {
         guard newPassword == confirmPassword else {
             alertMessage = "Passwords do not match."
             showAlert = true
-            print("Carlos3: Passwords do not match.")
             return
         }
 
@@ -108,11 +104,9 @@ struct ResetPasswordView: View {
                 try await SupabaseManager.shared.client.auth.update(user: UserAttributes(password: newPassword))
                 alertMessage = "Password reset successful!"
                 showAlert = true
-                print("Carlos3: Password reset successful.")
             } catch {
                 alertMessage = "Password reset failed: \(error.localizedDescription)"
                 showAlert = true
-                print("Carlos3: Password reset failed - \(error.localizedDescription).")
             }
             isLoading = false
         }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var viewModel: SleepViewModel
-    @State private var readinessSummary: String?
+//    @State private var readinessSummary: String?
     
     // Computed property for readiness score
     var readinessScoreDouble: Double {
@@ -20,9 +20,23 @@ struct ContentView: View {
     
     // Computed property for sleep performance
     var sleepPerformance: Double {
+        // Extract all required sleep metrics from the view model
         let totalSleepHours = viewModel.totalSleepHours
         let deepSleepHours = viewModel.deepSleepHours
-        return SleepCalculator.calculateSleepPerformance(totalSleepHours: totalSleepHours, deepSleepHours: deepSleepHours)
+        let remSleepHours = viewModel.remSleepHours
+        let coreSleepHours = viewModel.coreSleepHours
+        let unspecifiedSleepHours = viewModel.unspecifiedSleepHours
+        let awakeHours = viewModel.awakeHours
+        
+        // Pass all metrics to the SleepCalculator
+        return SleepCalculator.calculateSleepPerformance(
+            totalSleepHours: totalSleepHours,
+            deepSleepHours: deepSleepHours,
+            remSleepHours: remSleepHours,
+            coreSleepHours: coreSleepHours,
+            unspecifiedSleepHours: unspecifiedSleepHours,
+            awakeHours: awakeHours
+        )
     }
     
     // Computed property for HRV score
@@ -159,19 +173,16 @@ struct ContentView: View {
             
             // Overlay LoadingView when isLoading is true
             if viewModel.isLoading {
-                Color.black.opacity(0.4)
-                    .edgesIgnoringSafeArea(.all)
-                
                 LoadingView()
                     .transition(.opacity)
             }
         }
         .onAppear {
-//            if viewModel.readinessSummary == nil && !viewModel.isLoading {
-//                Task {
-//                    await viewModel.initializeData()
-//                }
-//            }
+            //            if viewModel.readinessSummary == nil && !viewModel.isLoading {
+            //                Task {
+            //                    await viewModel.initializeData()
+            //                }
+            //            }
         }
     }
 }

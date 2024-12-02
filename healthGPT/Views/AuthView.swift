@@ -135,10 +135,8 @@ struct AuthView: View {
         Task {
             do {
                 try await client.auth.signIn(email: email, password: password)
-                print("Session Token:", client.auth.session.accessToken ?? "No token")
                 onLogin()
             } catch {
-                print("Sign In failed:", error.localizedDescription)
                 if let message = parseError(error) {
                     alertMessage = message
                 } else {

@@ -13,4 +13,5 @@ struct WorkoutEntry: Identifiable, Codable {
     let duration: TimeInterval // Duration in seconds
     let date: Date
     let maxHeartRate: Double?
+    let calories: Double?
 }

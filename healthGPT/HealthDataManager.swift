@@ -37,7 +37,6 @@ class HealthDataManager {
         
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, error in
             if let error = error {
-                print("Error requesting HealthKit authorization: \(error.localizedDescription)")
                 completion(false)
                 return
             }
@@ -56,21 +55,17 @@ class HealthDataManager {
 
         // Calculate the start date as 6 p.m. (18:00) of the previous day
         guard let startDate = calendar.date(byAdding: .hour, value: -6, to: startOfToday) else {
-            print("Carlos1: Failed to calculate start date")
             return nil
         }
 
         // Calculate the end date as 12 p.m. (12:00) of today
         guard let endDate = calendar.date(byAdding: .hour, value: 12, to: startOfToday) else {
-            print("Carlos1: Failed to calculate end date")
             return nil
         }
 
-        // Debug: Print the start and end dates with time zone information
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss ZZZZ"
         dateFormatter.timeZone = timeZone
-        print("Carlos1: Fetching sleep data between \(dateFormatter.string(from: startDate)) and \(dateFormatter.string(from: endDate))")
 
         // Create the date range predicate without strict options
         let datePredicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [])
@@ -87,13 +82,10 @@ class HealthDataManager {
         return await withCheckedContinuation { continuation in
             let query = HKSampleQuery(sampleType: sleepType, predicate: combinedPredicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
                 if let error = error {
-                    print("Carlos1: Error fetching sleep data: \(error)")
                     continuation.resume(returning: nil)
                 } else if let samples = samples as? [HKCategorySample], !samples.isEmpty {
-                    print("Carlos1: Fetched sleep samples: \(samples)")
                     continuation.resume(returning: samples)
                 } else {
-                    print("Carlos1: No sleep samples found.")
                     continuation.resume(returning: nil)
                 }
             }
@@ -104,7 +96,6 @@ class HealthDataManager {
 
     func fetchHeartRateRangeWhileAsleep(for date: Date, completion: @escaping ((min: Double, max: Double)?) -> Void) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
-            print("Heart rate type not available")
             completion(nil)
             return
         }
@@ -115,13 +106,11 @@ class HealthDataManager {
         let sleepStart = calendar.date(bySettingHour: 22, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: date)!) ?? date
         let sleepEnd = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: date) ?? date
 
-        print("Sleep Start: \(sleepStart), Sleep End: \(sleepEnd)")
 
         let predicate = HKQuery.predicateForSamples(withStart: sleepStart, end: sleepEnd, options: .strictStartDate)
 
         let query = HKStatisticsQuery(quantityType: heartRateType, quantitySamplePredicate: predicate, options: [.discreteMin, .discreteMax]) { _, result, error in
             if let error = error {
-                print("Error in heart rate range query: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
@@ -129,14 +118,12 @@ class HealthDataManager {
             guard let result = result,
                   let minQuantity = result.minimumQuantity(),
                   let maxQuantity = result.maximumQuantity() else {
-                print("No heart rate data available for the specified date range")
                 completion(nil)
                 return
             }
 
             let minHeartRate = minQuantity.doubleValue(for: HKUnit(from: "count/min"))
             let maxHeartRate = maxQuantity.doubleValue(for: HKUnit(from: "count/min"))
-            print("Heart Rate Range while asleep: \(minHeartRate) - \(maxHeartRate) bpm")
             completion((min: minHeartRate, max: maxHeartRate))
         }
 
@@ -161,19 +148,16 @@ class HealthDataManager {
         
         let query = HKSampleQuery(sampleType: restingHeartRateType, predicate: predicate, limit: 1, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, error in
             if let error = error {
-                print("Error fetching resting heart rate: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
             
             guard let sample = samples?.first as? HKQuantitySample else {
-                print("No resting heart rate data available for the last 24 hours")
                 completion(nil)
                 return
             }
             
             let restingHeartRate = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-            print("Resting Heart Rate: \(restingHeartRate) bpm")
             completion(restingHeartRate)
         }
         
@@ -194,13 +178,11 @@ class HealthDataManager {
         
         let query = HKSampleQuery(sampleType: restingHeartRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, error in
             if let error = error {
-                print("Error fetching resting heart rate: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
 
             guard let heartRateSamples = samples as? [HKQuantitySample], !heartRateSamples.isEmpty else {
-                print("No resting heart rate data available for the last 3 months")
                 completion(nil)
                 return
             }
@@ -210,7 +192,6 @@ class HealthDataManager {
             }
 
             let averageHeartRate = totalHeartRate / Double(heartRateSamples.count)
-            print("Average Resting Heart Rate for Last 3 Months: \(averageHeartRate) bpm")
             completion(averageHeartRate)
         }
 
@@ -220,7 +201,6 @@ class HealthDataManager {
     
     func fetchHeartRateVariability(for date: Date, completion: @escaping (Double?) -> Void) {
         guard let heartRateVariabilityType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
-            print("Heart Rate Variability type not available")
             completion(nil)
             return
         }
@@ -233,29 +213,24 @@ class HealthDataManager {
         
         let query = HKStatisticsQuery(quantityType: heartRateVariabilityType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, error in
             if let error = error {
-                print("Error in Heart Rate Variability query: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
             
             guard let result = result, let averageQuantity = result.averageQuantity() else {
-                print("No Heart Rate Variability data available for the last 24 hours")
                 completion(nil)
                 return
             }
             
             let averageHRV = averageQuantity.doubleValue(for: HKUnit(from: "ms"))
-            print("Average Heart Rate Variability: \(averageHRV) ms")
             completion(averageHRV)
         }
         
-        print("Executing Average HRV query...")
         healthStore.execute(query)
     }
     
     func fetchHeartRateVariabilityForLast30Days(completion: @escaping ([Double]?) -> Void) {
           guard let heartRateVariabilityType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else {
-              print("Heart Rate Variability type not available")
               completion(nil)
               return
           }
@@ -269,7 +244,6 @@ class HealthDataManager {
        
             query.initialResultsHandler = { _, results, error in
                 if let error = error {
-                    print("Error in 30 days HRV query: \(error.localizedDescription)")
                     completion(nil)
                     return
                 }
@@ -282,18 +256,15 @@ class HealthDataManager {
                     }
                 }
 
-                print("30 days HRV values: \(hrvValues)")
                 completion(hrvValues)
             }
 
-            print("Executing 30 days HRV query...")
             healthStore.execute(query)
         
       }
     
     func fetchAverageBloodOxygenLevel(for date: Date, completion: @escaping (Double?) -> Void) {
         guard let bloodOxygenType = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation) else {
-            print("Blood Oxygen type not available")
             completion(nil)
             return
         }
@@ -306,23 +277,19 @@ class HealthDataManager {
         
         let query = HKStatisticsQuery(quantityType: bloodOxygenType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, error in
             if let error = error {
-                print("Error in Blood Oxygen query: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
             
             guard let result = result, let averageQuantity = result.averageQuantity() else {
-                print("No Blood Oxygen data available for the last 24 hours")
                 completion(nil)
                 return
             }
             
             let averageBloodOxygenLevel = averageQuantity.doubleValue(for: HKUnit.percent())
-            print("Average Blood Oxygen Level: \(averageBloodOxygenLevel)%")
             completion(averageBloodOxygenLevel)
         }
         
-        print("Executing Average Blood Oxygen Level query...")
         healthStore.execute(query)
     }
     
@@ -339,13 +306,11 @@ class HealthDataManager {
 
         let query = HKSampleQuery(sampleType: wristTemperatureType, predicate: predicate, limit: 1, sortDescriptors: [sortDescriptor]) { _, samples, error in
             if let error = error {
-                print("Error fetching wrist temperature while at sleep: \(error.localizedDescription)")
                 completion(nil, nil)
                 return
             }
 
             guard let sample = samples?.first as? HKQuantitySample else {
-                print("No wrist temperature data while at sleep available for the date: \(date)")
                 completion(nil, nil)
                 return
             }
@@ -382,7 +347,6 @@ class HealthDataManager {
 
         let query = HKStatisticsQuery(quantityType: wristTemperatureType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, error in
             if let error = error {
-                print("Error calculating body temperature baseline: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
@@ -390,13 +354,9 @@ class HealthDataManager {
             guard let averageTemperature = result?.averageQuantity()?.doubleValue(for: HKUnit.degreeCelsius()),
                   let startDate = result?.startDate, // These properties represent the range of all samples included.
                   let endDate = result?.endDate else {
-                print("No body temperature data available up to today")
                 completion(nil)
                 return
             }
-
-            // Log the start and end dates of the data analyzed.
-            print("Analyzing data from start date: \(startDate) to end date: \(endDate)")
 
             completion(averageTemperature)
         }
@@ -435,13 +395,11 @@ class HealthDataManager {
             
             let query = HKSampleQuery(sampleType: respiratoryRateType, predicate: predicate, limit: 1, sortDescriptors: [sortDescriptor]) { _, samples, error in
                 if let error = error {
-                    print("Error fetching respiratory rate while sleeping: \(error.localizedDescription)")
                     completion(nil)
                     return
                 }
                 
                 guard let sample = samples?.first as? HKQuantitySample else {
-                    print("No respiratory rate data while sleeping available for the date: \(date)")
                     completion(nil)
                     return
                 }
@@ -455,7 +413,6 @@ class HealthDataManager {
 
     func fetchAverageRespiratoryRateForLastWeek(completion: @escaping (Double?) -> Void) {
         guard let respiratoryRateType = HKQuantityType.quantityType(forIdentifier: .respiratoryRate) else {
-            print("Respiratory Rate type not available")
             completion(nil)
             return
         }
@@ -468,13 +425,11 @@ class HealthDataManager {
 
         let query = HKSampleQuery(sampleType: respiratoryRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]) { _, samples, error in
             if let error = error {
-                print("Error fetching respiratory rate: \(error.localizedDescription)")
                 completion(nil)
                 return
             }
 
             guard let respiratorySamples = samples as? [HKQuantitySample], !respiratorySamples.isEmpty else {
-                print("No respiratory rate data available for the last week")
                 completion(nil)
                 return
             }
@@ -484,7 +439,6 @@ class HealthDataManager {
             }
 
             let averageRespiratoryRate = totalRespiratoryRate / Double(respiratorySamples.count)
-            print("Average Respiratory Rate for Last Week: \(averageRespiratoryRate) breaths/min")
             completion(averageRespiratoryRate)
         }
 

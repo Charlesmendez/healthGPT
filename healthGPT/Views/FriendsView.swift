@@ -14,7 +14,6 @@ struct FriendsView: View {
     @State private var showAlert: Bool = false
 
     var body: some View {
-        NavigationView {
             ScrollView {
                 VStack(spacing: 24) {
                     // Invite a Friend Section
@@ -52,7 +51,6 @@ struct FriendsView: View {
                 }
             }
         }
-    }
 
     // MARK: - Invite Friend Section
 
@@ -194,6 +192,18 @@ struct FriendsView: View {
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
                             .minimumScaleFactor(0.8)
+
+                        // Subtle revoke action as a link
+                        Button(action: {
+                            Task {
+                                await viewModel.revokeFriend(friendId: friendScore.friend.id)
+                            }
+                        }) {
+                            Text("Revoke")
+                                .font(.footnote)
+                                .foregroundColor(.red)
+                                .padding(.top, 2)
+                        }
                     }
                     .padding()
                     .background(Color(.systemBackground))

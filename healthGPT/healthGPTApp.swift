@@ -49,7 +49,6 @@ struct healthGPTApp: App {
 
             case .resetPassword(let url):
                 ResetPasswordView(url: url) {
-                    print("Carlos3: Navigating to AuthView after password reset.")
                     self.currentView = .auth // Redirect to the login screen after password reset
                 }
             }
@@ -67,17 +66,13 @@ struct healthGPTApp: App {
         do {
             let session = try await SupabaseManager.shared.client.auth.session
             self.isLoggedIn = true
-            print("Carlos3: User is logged in: \(session.user.email ?? "No email")")
         } catch {
             self.isLoggedIn = false
-            print("Carlos3: Error checking session: \(error.localizedDescription)")
         }
     }
 
     private func handleURL(_ url: URL) {
-        print("Carlos3: Opened via URL: \(url)")
         if url.host == "reset-password" {
-            print("Carlos3: Navigating to ResetPasswordView with URL: \(url).")
             self.currentView = .resetPassword(url: url)
         }
     }

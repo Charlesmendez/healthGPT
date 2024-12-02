@@ -32,10 +32,11 @@ struct SleepView: View {
                     .foregroundColor(.primary)
                 
                 VStack(spacing: 10) {
-                    SleepStageBar(stage: "Awake", value: 5, color: .gray)
-                    SleepStageBar(stage: "Light Sleep", value: 52, color: .blue)
-                    SleepStageBar(stage: "Deep Sleep", value: 22, color: .purple)
-                    SleepStageBar(stage: "REM", value: 21, color: .pink)
+                    SleepStageBar(stage: "Awake", value: viewModel.awakePercentage, color: .gray)
+                    SleepStageBar(stage: "Core Sleep", value: viewModel.coreSleepPercentage, color: .blue)
+                    SleepStageBar(stage: "Deep Sleep", value: viewModel.deepSleepPercentage, color: .purple)
+                    SleepStageBar(stage: "REM", value: viewModel.remSleepPercentage, color: .pink)
+                    SleepStageBar(stage: "Unspecified", value: viewModel.unspecifiedSleepPercentage, color: .orange)
                 }
             }
             .padding()
