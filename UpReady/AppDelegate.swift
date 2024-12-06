@@ -27,26 +27,37 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Schedule the next refresh
         scheduleAppRefreshIfNeeded()
 
-        // Create an operation that performs the background fetch
-        let operation = FetchDataOperation(viewModel: viewModel)
+        Task {
+            // Validate subscription before proceeding
+            let hasValidSubscription = await SubscriptionManager.shared.isSubscriptionValid()
 
-        // Provide an expiration handler for the task
-        task.expirationHandler = {
-            operation.cancel()
-        }
-
-        // Inform the system when the task is complete
-        operation.completionBlock = {
-            task.setTaskCompleted(success: !operation.isCancelled)
-            if !operation.isCancelled {
-                print("Background refresh succeeded.")
-            } else {
-                print("Background refresh failed or was cancelled.")
+            if !hasValidSubscription {
+                print("Subscription is not valid. Cancelling background refresh.")
+                task.setTaskCompleted(success: false)
+                return
             }
-        }
 
-        // Start the operation
-        OperationQueue().addOperation(operation)
+            // Create an operation that performs the background fetch
+            let operation = FetchDataOperation(viewModel: viewModel)
+
+            // Provide an expiration handler for the task
+            task.expirationHandler = {
+                operation.cancel()
+            }
+
+            // Inform the system when the task is complete
+            operation.completionBlock = {
+                task.setTaskCompleted(success: !operation.isCancelled)
+                if !operation.isCancelled {
+                    print("Background refresh succeeded.")
+                } else {
+                    print("Background refresh failed or was cancelled.")
+                }
+            }
+
+            // Start the operation
+            OperationQueue().addOperation(operation)
+        }
     }
 
     func scheduleAppRefreshIfNeeded() {
@@ -55,13 +66,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let now = Date()
 
         // Define the "day" period as 5 AM to 8 PM
-        let startOfDay = calendar.date(bySettingHour: 5, minute: 0, second: 0, of: now)!
-        let endOfDay = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now)!
+        guard let startOfDay = calendar.date(bySettingHour: 5, minute: 0, second: 0, of: now),
+              let endOfDay = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: now) else {
+            print("Failed to calculate start or end of day.")
+            return
+        }
 
         // Check if the user has opened the app today
         if !viewModel.hasOpenedToday {
             // Schedule background task to run after 8 PM
-            let earliestBeginDate = endOfDay.addingTimeInterval(60 * 60) // 12 AM
+            let earliestBeginDate = endOfDay.addingTimeInterval(60 * 60) // 9 PM
 
             let request = BGAppRefreshTaskRequest(identifier: "com.app.UpReady.refresh")
             request.earliestBeginDate = earliestBeginDate
@@ -70,13 +84,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                 try BGTaskScheduler.shared.submit(request)
                 print("Background refresh scheduled at or after \(earliestBeginDate)")
             } catch {
-                print("Could not schedule app refresh: \(error)")
+                print("Could not schedule app refresh: \(error.localizedDescription)")
             }
         } else {
             print("User has opened the app today. No background refresh scheduled.")
         }
     }
 }
+
 
 class FetchDataOperation: Operation, @unchecked Sendable {
     var viewModel: SleepViewModel?
@@ -109,3 +124,4 @@ class FetchDataOperation: Operation, @unchecked Sendable {
         _ = semaphore.wait(timeout: .distantFuture)
     }
 }
+

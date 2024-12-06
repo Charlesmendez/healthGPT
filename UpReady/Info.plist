@@ -2,25 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLName</key>
-            <string>com.UpReady</string>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>UpReady</string>
-            </array>
-        </dict>
-    </array>
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>fetch</string>
-        <string>processing</string>
-    </array>
-    <key>BGTaskSchedulerPermittedIdentifiers</key>
-    <array>
-        <string>com.app.UpReady.refresh</string>
-    </array>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>UpReady needs access to your Health data to track your health data to generate personalized recommendations. UpReady will not store your data</string>
+	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
+	<string>UpReady needs access to your Health data to track your health data to generate personalized recommendations. UpReady will not store your data</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.app.UpReady</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>upready</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.app.UpReady.refresh</string>
+	</array>
 </dict>
 </plist>

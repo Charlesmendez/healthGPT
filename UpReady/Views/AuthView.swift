@@ -18,118 +18,139 @@ struct AuthView: View {
     private let client = SupabaseManager.shared.client
 
     var body: some View {
-            NavigationView {
-                VStack(spacing: 25) {
-                    Image("up")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: dynamicTypeSize.isAccessibilitySize ? 200 : 250,
-                               height: dynamicTypeSize.isAccessibilitySize ? 200 : 250)
-                        .padding(.top, 40)
+        NavigationView {
+            VStack(spacing: 25) {
+                Image("up")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: dynamicTypeSize.isAccessibilitySize ? 200 : 250,
+                           height: dynamicTypeSize.isAccessibilitySize ? 200 : 250)
+                    .padding(.top, 40)
 
-                    Text(showSignUp ? "Create Account" : "Welcome Back")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                Text(showSignUp ? "Create Account" : "Welcome Back")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
 
-                    VStack(spacing: 20) {
-                        if showSignUp {
-                            TextField("Name", text: $name)
-                                .textFieldStyle(RoundedTextFieldStyle())
-                        }
-
-                        TextField("Email", text: $email)
-                            .textFieldStyle(RoundedTextFieldStyle())
-                            .textInputAutocapitalization(.none)
-                            .disableAutocorrection(true)
-
-                        SecureField("Password", text: $password)
+                VStack(spacing: 20) {
+                    if showSignUp {
+                        TextField("Name", text: $name)
                             .textFieldStyle(RoundedTextFieldStyle())
                     }
-                    .padding(.horizontal)
 
-                    Button(action: {
-                        if showSignUp {
-                            guard !email.isEmpty, !password.isEmpty, !name.isEmpty else {
-                                alertMessage = "Please fill out all fields."
-                                showAlert = true
-                                return
-                            }
-                            handleSignUp()
-                        } else {
-                            guard !email.isEmpty, !password.isEmpty else {
-                                alertMessage = "Please enter both email and password."
-                                showAlert = true
-                                return
-                            }
-                            handleSignIn()
-                        }
-                    }) {
-                        HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            }
-                            Text(showSignUp ? "Sign Up" : "Sign In")
-                                .opacity(isLoading ? 0.5 : 1)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
-                    .disabled(isLoading)
-                    .padding(.horizontal)
+                    TextField("Email", text: $email)
+                        .textFieldStyle(RoundedTextFieldStyle())
+                        .textInputAutocapitalization(.none)
+                        .disableAutocorrection(true)
 
-                    Button(action: {
-                        handleForgotPassword()
-                    }) {
-                        Text("Forgot Password?")
-                            .foregroundColor(.blue)
-                            .font(.body)
-                    }
-                    .padding(.horizontal)
-
-                    Text("Or continue with")
-                        .foregroundColor(colorScheme == .dark ? .gray : .black.opacity(0.6))
-
-                    HStack(spacing: 20) {
-                        SignInWithAppleButton(
-                            onRequest: { request in
-                                request.requestedScopes = [.email, .fullName]
-                            },
-                            onCompletion: handleAppleSignIn
-                        )
-                        .signInWithAppleButtonStyle(
-                            colorScheme == .dark ? .white : .black
-                        )
-                        .frame(height: 50)
-                        .cornerRadius(8)
-                    }
-
-                    Button(action: { showSignUp.toggle() }) {
-                        Text(showSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
-                            .foregroundColor(.blue)
-                            .font(.body)
-                    }
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(RoundedTextFieldStyle())
                 }
-                .onAppear {
-                    // Reset to Sign In view whenever AuthView appears
-                    showSignUp = false
+                .padding(.horizontal)
+
+                Button(action: {
+                    if showSignUp {
+                        guard !email.isEmpty, !password.isEmpty, !name.isEmpty else {
+                            alertMessage = "Please fill out all fields."
+                            showAlert = true
+                            return
+                        }
+                        handleSignUp()
+                    } else {
+                        guard !email.isEmpty, !password.isEmpty else {
+                            alertMessage = "Please enter both email and password."
+                            showAlert = true
+                            return
+                        }
+                        handleSignIn()
+                    }
+                }) {
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        }
+                        Text(showSignUp ? "Sign Up" : "Sign In")
+                            .opacity(isLoading ? 0.5 : 1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                 }
-                .padding()
-                .background(colorScheme == .dark ? Color.black : Color.white)
-                .edgesIgnoringSafeArea(.all)
-                .alert(isPresented: $showAlert) {
-                    Alert(
-                        title: Text("Notification"),
-                        message: Text(alertMessage),
-                        dismissButton: .default(Text("OK"))
+                .disabled(isLoading)
+                .padding(.horizontal)
+
+                Button(action: {
+                    handleForgotPassword()
+                }) {
+                    Text("Forgot Password?")
+                        .foregroundColor(.blue)
+                        .font(.body)
+                }
+                .padding(.horizontal)
+
+                // Terms and Conditions with Tappable Links
+                let termsText: AttributedString = {
+                    var attributedString = AttributedString("By entering the app you are accepting terms and conditions and privacy policy.")
+                    if let termsRange = attributedString.range(of: "terms and conditions") {
+                        attributedString[termsRange].foregroundColor = .blue
+                        attributedString[termsRange].underlineStyle = .single
+                        attributedString[termsRange].link = URL(string: "https://www.upready.ai/terms")!
+                    }
+                    if let privacyRange = attributedString.range(of: "privacy policy") {
+                        attributedString[privacyRange].foregroundColor = .blue
+                        attributedString[privacyRange].underlineStyle = .single
+                        attributedString[privacyRange].link = URL(string: "https://www.upready.ai/privacy")!
+                    }
+                    return attributedString
+                }()
+
+                Text(termsText)
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                Text("Or continue with")
+                    .foregroundColor(colorScheme == .dark ? .gray : .black.opacity(0.6))
+
+                HStack(spacing: 20) {
+                    SignInWithAppleButton(
+                        onRequest: { request in
+                            request.requestedScopes = [.email, .fullName]
+                        },
+                        onCompletion: handleAppleSignIn
                     )
+                    .signInWithAppleButtonStyle(
+                        colorScheme == .dark ? .white : .black
+                    )
+                    .frame(height: 50)
+                    .cornerRadius(8)
+                }
+
+                Button(action: { showSignUp.toggle() }) {
+                    Text(showSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                        .foregroundColor(.blue)
+                        .font(.body)
                 }
             }
+            .onAppear {
+                // Reset to Sign In view whenever AuthView appears
+                showSignUp = false
+            }
+            .padding()
+            .background(colorScheme == .dark ? Color.black : Color.white)
+            .edgesIgnoringSafeArea(.all)
+            .alert(isPresented: $showAlert) {
+                Alert(
+                    title: Text("Notification"),
+                    message: Text(alertMessage),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
         }
+    }
 
     private func handleSignIn() {
         Task {
@@ -146,7 +167,7 @@ struct AuthView: View {
             }
         }
     }
-    
+
     private func handleSignUp() {
         Task {
             do {
@@ -171,7 +192,7 @@ struct AuthView: View {
             }
         }
     }
-    
+
     private func parseError(_ error: Error) -> String? {
         // Attempt to parse JSON from the error description
         if let data = error.localizedDescription.data(using: .utf8),
@@ -184,7 +205,7 @@ struct AuthView: View {
         // Return nil if parsing fails
         return nil
     }
-    
+
     private func handleForgotPassword() {
         let alert = UIAlertController(
             title: "Reset Password",
@@ -232,17 +253,6 @@ struct AuthView: View {
         }
     }
 
-        private func sendPasswordReset(email: String) async {
-            do {
-                try await client.auth.resetPasswordForEmail(email)
-                alertMessage = "Password reset email sent. Check your inbox!"
-                showAlert = true
-            } catch {
-                alertMessage = "Failed to send password reset email: \(error.localizedDescription)"
-                showAlert = true
-            }
-        }
-
     private func handleAppleSignIn(result: Result<ASAuthorization, Error>) {
         Task {
             do {
@@ -270,21 +280,4 @@ struct AuthView: View {
             }
         }
     }
-
 }
-
-
-// Preview Provider for AuthView
-//struct AuthView_Previews: PreviewProvider {
-//    static var previews: some View {
-//        Group {
-//            AuthView(onLogin: {})
-//                .preferredColorScheme(.light)
-//                .previewDisplayName("Light Mode")
-//
-//            AuthView(onLogin: {})
-//                .preferredColorScheme(.dark)
-//                .previewDisplayName("Dark Mode")
-//        }
-//    }
-//}

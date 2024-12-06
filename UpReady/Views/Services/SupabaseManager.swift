@@ -61,12 +61,6 @@ class SupabaseManager {
             .execute()
             .value
         
-        // Debug print raw data fetched
-        print("Fetched readiness scores:")
-        for entry in data {
-            print("Date: \(entry.date), Score: \(entry.score), User ID: \(entry.userID)")
-        }
-        
         // Group data by day and select the latest entry per day
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -76,25 +70,10 @@ class SupabaseManager {
             return formatter.string(from: entry.date)
         }
         
-        // Debug print the groups
-        print("Grouped data by day:")
-        for (dateString, entries) in grouped {
-            print("Date: \(dateString), Entries: \(entries.count)")
-            for entry in entries {
-                print("  Entry date: \(entry.date), score: \(entry.score)")
-            }
-        }
-        
         // Select the latest entry per day
         let latestEntriesPerDay = grouped.compactMap { (_, entries) -> ReadinessScoreEntry? in
             entries.sorted(by: { $0.date > $1.date }).first
         }.sorted(by: { $0.date < $1.date }) // Sort by date ascending
-        
-        // Print final selected entries
-        print("Latest entries per day:")
-        for entry in latestEntriesPerDay {
-            print("Date: \(entry.date), Score: \(entry.score)")
-        }
         
         return latestEntriesPerDay
     }
@@ -130,7 +109,6 @@ class SupabaseManager {
                 .from("friend_invites")
                 .insert(inviteData)
                 .execute()
-            print("Friend invite sent successfully.")
         } else if profiles.isEmpty {
             throw NSError(domain: "SupabaseManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "User with email not found"])
         } else {
@@ -141,12 +119,9 @@ class SupabaseManager {
     func fetchPendingInvites() async throws -> [FriendInvite] {
         print("Fetching session...")
         let session = try await client.auth.session
-        print("Session retrieved: \(session)")
         
         let currentUserId = session.user.id
-        print("Current user ID: \(currentUserId)")
         
-        print("Querying database...")
         
         // Define the response type with created_at as String
         struct FriendInviteResponse: Codable {
